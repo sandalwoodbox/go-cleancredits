@@ -1,0 +1,8 @@
+Website = "https://github.com/sandalwoodbox/go-cleancredits"
+
+[Details]
+Icon = "Icon.png"
+Name = "cleancredits"
+ID = "com.github.sandalwoodbox.cleancredits"
+Version = "1.0.0"
+Build = 1
