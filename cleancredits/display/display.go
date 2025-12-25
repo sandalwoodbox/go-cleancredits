@@ -61,6 +61,7 @@ type Display struct {
 	Image         *canvas.Image
 	SelectedTab   binding.String
 	MaskForm      mask.Form
+	DrawForm      draw.Form
 
 	Mode    binding.String
 	Zoom    binding.String
@@ -76,6 +77,7 @@ func NewDisplay(vc *gocv.VideoCapture, selectedTab binding.String, maskForm mask
 		Image:         img,
 		SelectedTab:   selectedTab,
 		MaskForm:      maskForm,
+		DrawForm:      drawForm,
 
 		Mode:    binding.NewString(),
 		Zoom:    binding.NewString(),
@@ -179,7 +181,16 @@ func (d Display) Render() {
 	mat := gocv.NewMat()
 	defer mat.Close()
 
-	frame, err := d.MaskForm.Frame.Get()
+	frameVar := d.MaskForm.Frame
+	tabName, err := d.SelectedTab.Get()
+	if err != nil {
+		fmt.Println("Error getting selected tab: ", err)
+		return
+	}
+	if tabName == "Draw" {
+		frameVar = d.DrawForm.Frame
+	}
+	frame, err := frameVar.Get()
 	if err != nil {
 		fmt.Println("Error getting frame number: ", err)
 		return
