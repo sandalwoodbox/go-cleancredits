@@ -14,6 +14,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"gocv.io/x/gocv"
 
+	"github.com/sandalwoodbox/go-cleancredits/cleancredits/draw"
 	"github.com/sandalwoodbox/go-cleancredits/cleancredits/mask"
 	ccWidget "github.com/sandalwoodbox/go-cleancredits/cleancredits/widget"
 )
@@ -67,7 +68,7 @@ type Display struct {
 	AnchorY binding.Int
 }
 
-func NewDisplay(vc *gocv.VideoCapture, selectedTab binding.String, maskForm mask.Form) Display {
+func NewDisplay(vc *gocv.VideoCapture, selectedTab binding.String, maskForm mask.Form, drawForm draw.Form) Display {
 	img := &canvas.Image{}
 	d := Display{
 		VideoCapture:  vc,
@@ -111,13 +112,10 @@ func NewDisplay(vc *gocv.VideoCapture, selectedTab binding.String, maskForm mask
 		),
 		d.Image,
 	)
-	scheduleRenderListener := binding.NewDataListener(func() {
-		d.ScheduleRender()
-	})
+	scheduleRenderListener := binding.NewDataListener(d.ScheduleRender)
 	selectedTab.AddListener(scheduleRenderListener)
-	maskForm.OnChange(func() {
-		d.ScheduleRender()
-	})
+	maskForm.OnChange(d.ScheduleRender)
+	drawForm.OnChange(d.ScheduleRender)
 	d.Mode.AddListener(scheduleRenderListener)
 	d.Zoom.AddListener(scheduleRenderListener)
 	d.AnchorX.AddListener(scheduleRenderListener)

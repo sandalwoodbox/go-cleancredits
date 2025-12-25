@@ -75,18 +75,19 @@ func NewForm(frameCount, videoWidth, videoHeight int) Form {
 }
 
 func (f Form) OnChange(fn func()) {
-	f.Frame.AddListener(binding.NewDataListener(fn))
-	f.Grow.AddListener(binding.NewDataListener(fn))
+	l := binding.NewDataListener(fn)
+	f.Frame.AddListener(l)
+	f.Grow.AddListener(l)
 
-	f.HueMin.AddListener(binding.NewDataListener(fn))
-	f.HueMax.AddListener(binding.NewDataListener(fn))
-	f.SatMin.AddListener(binding.NewDataListener(fn))
-	f.SatMax.AddListener(binding.NewDataListener(fn))
-	f.ValMin.AddListener(binding.NewDataListener(fn))
-	f.ValMax.AddListener(binding.NewDataListener(fn))
+	f.HueMin.AddListener(l)
+	f.HueMax.AddListener(l)
+	f.SatMin.AddListener(l)
+	f.SatMax.AddListener(l)
+	f.ValMin.AddListener(l)
+	f.ValMax.AddListener(l)
 
-	f.CropLeft.AddListener(binding.NewDataListener(fn))
-	f.CropTop.AddListener(binding.NewDataListener(fn))
-	f.CropRight.AddListener(binding.NewDataListener(fn))
-	f.CropBottom.AddListener(binding.NewDataListener(fn))
+	f.CropLeft.AddListener(l)
+	f.CropTop.AddListener(l)
+	f.CropRight.AddListener(l)
+	f.CropBottom.AddListener(l)
 }
