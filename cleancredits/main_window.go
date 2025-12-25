@@ -5,12 +5,19 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 	"github.com/sandalwoodbox/go-cleancredits/cleancredits/display"
 	"github.com/sandalwoodbox/go-cleancredits/cleancredits/mask"
 	"gocv.io/x/gocv"
+)
+
+const (
+	MaskTabName   = "Mask"
+	DrawTabName   = "Draw"
+	RenderTabName = "Render"
 )
 
 func NewMainWindow(a fyne.App) fyne.Window {
@@ -52,17 +59,25 @@ func buildCleaner(vc *gocv.VideoCapture) fyne.CanvasObject {
 	videoHeight := int(vc.Get(gocv.VideoCaptureFrameWidth))
 	frameCount := int(vc.Get(gocv.VideoCaptureFrameCount))
 	maskForm := mask.NewForm(frameCount, videoWidth, videoHeight)
+	selectedTab := binding.NewString()
 
-	left := container.NewAppTabs(
-		container.NewTabItem("Mask", maskForm),
-		container.NewTabItem("Draw", widget.NewLabel("Draw tab")),
-		container.NewTabItem("Render", widget.NewLabel("Render tab")),
-	)
+	maskTab := container.NewTabItem(MaskTabName, maskForm.Container)
+	drawTab := container.NewTabItem(DrawTabName, widget.NewLabel("Draw tab"))
+	renderTab := container.NewTabItem(RenderTabName, widget.NewLabel("Render tab"))
+	left := container.NewAppTabs(maskTab, drawTab, renderTab)
+	left.OnSelected = func(ti *container.TabItem) {
+		switch ti {
+		case maskTab:
+			selectedTab.Set(MaskTabName)
+		case drawTab:
+			selectedTab.Set(DrawTabName)
+		case renderTab:
+			selectedTab.Set(RenderTabName)
+		}
+	}
 
-	display := display.NewDisplay(vc)
-	display.SetFrame(200)
-	right := display.Render()
-	content := container.New(layout.NewHBoxLayout(), left, right)
+	display := display.NewDisplay(vc, selectedTab, maskForm)
+	content := container.New(layout.NewHBoxLayout(), left, display.Image)
 
 	return content
 }
