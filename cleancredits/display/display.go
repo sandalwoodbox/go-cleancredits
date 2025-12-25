@@ -13,29 +13,47 @@ import (
 )
 
 type Display struct {
-	VideoCapture *gocv.VideoCapture
-	Image        *canvas.Image
-	SelectedTab  binding.String
-	MaskForm     mask.Form
+	VideoCapture  *gocv.VideoCapture
+	RenderChannel chan struct{}
+	Image         *canvas.Image
+	SelectedTab   binding.String
+	MaskForm      mask.Form
 }
 
 func NewDisplay(vc *gocv.VideoCapture, selectedTab binding.String, maskForm mask.Form) Display {
 	d := Display{
-		VideoCapture: vc,
-		Image:        &canvas.Image{},
-		SelectedTab:  selectedTab,
-		MaskForm:     maskForm,
+		VideoCapture:  vc,
+		RenderChannel: make(chan struct{}),
+		Image:         &canvas.Image{},
+		SelectedTab:   selectedTab,
+		MaskForm:      maskForm,
 	}
 	selectedTab.AddListener(binding.NewDataListener(func() {
-		d.Render()
+		d.ScheduleRender()
 	}))
 	maskForm.OnChange(func() {
-		d.Render()
+		d.ScheduleRender()
 	})
+
+	go func() {
+		for range d.RenderChannel {
+			fyne.DoAndWait(d.Render)
+		}
+	}()
 	return d
 }
 
+func (d Display) ScheduleRender() {
+	select {
+	case d.RenderChannel <- struct{}{}:
+		// fmt.Println("Render scheduled")
+	default:
+		// fmt.Println("Render already scheduled")
+	}
+}
+
 func (d Display) Render() {
+	// fmt.Println("Render")
 	mat := gocv.NewMat()
 	defer mat.Close()
 
