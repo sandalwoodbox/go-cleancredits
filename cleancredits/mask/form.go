@@ -6,72 +6,76 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+
+	ccWidget "github.com/sandalwoodbox/go-cleancredits/cleancredits/widget"
+)
+
+const (
+	HueMax = 179
+	SatMax = 255
+	ValMax = 255
 )
 
 type Form struct {
 	Container *fyne.Container
 
-	Frame binding.Float
-	Mode  binding.String
-	Grow  binding.Float
+	Frame binding.Int
+	Grow  binding.Int
 
-	HueMin binding.Float
-	HueMax binding.Float
-	SatMin binding.Float
-	SatMax binding.Float
-	ValMin binding.Float
-	ValMax binding.Float
+	HueMin binding.Int
+	HueMax binding.Int
+	SatMin binding.Int
+	SatMax binding.Int
+	ValMin binding.Int
+	ValMax binding.Int
 
-	CropLeft   binding.Float
-	CropTop    binding.Float
-	CropRight  binding.Float
-	CropBottom binding.Float
+	CropLeft   binding.Int
+	CropTop    binding.Int
+	CropRight  binding.Int
+	CropBottom binding.Int
 }
 
 func NewForm(frameCount, videoWidth, videoHeight int) Form {
-	form := Form{
-		Frame: binding.NewFloat(),
-		Mode:  binding.NewString(),
-		Grow:  binding.NewFloat(),
+	f := Form{
+		Frame: binding.NewInt(),
+		Grow:  binding.NewInt(),
 
-		HueMin: binding.NewFloat(),
-		HueMax: binding.NewFloat(),
-		SatMin: binding.NewFloat(),
-		SatMax: binding.NewFloat(),
-		ValMin: binding.NewFloat(),
-		ValMax: binding.NewFloat(),
+		HueMin: binding.NewInt(),
+		HueMax: binding.NewInt(),
+		SatMin: binding.NewInt(),
+		SatMax: binding.NewInt(),
+		ValMin: binding.NewInt(),
+		ValMax: binding.NewInt(),
 
-		CropLeft:   binding.NewFloat(),
-		CropTop:    binding.NewFloat(),
-		CropRight:  binding.NewFloat(),
-		CropBottom: binding.NewFloat(),
+		CropLeft:   binding.NewInt(),
+		CropTop:    binding.NewInt(),
+		CropRight:  binding.NewInt(),
+		CropBottom: binding.NewInt(),
 	}
-	form.Container = container.New(
+	f.Container = container.New(
 		layout.NewGridLayout(3),
-		widget.NewLabel("Frame"), widget.NewSliderWithData(0, float64(frameCount)-1, form.Frame), widget.NewEntryWithData(binding.FloatToStringWithFormat(form.Frame, "%0.0f")),
-		widget.NewLabel("Mode"), widget.NewSelectWithData([]string{Include, Exclude}, form.Mode), widget.NewLabel(""),
-		widget.NewLabel("Grow"), widget.NewSliderWithData(0, float64(videoHeight), form.Grow), widget.NewLabel(""),
+		widget.NewLabel("Frame"), ccWidget.NewIntSliderWithData(0, frameCount-1, f.Frame), ccWidget.NewIntEntryWithData(f.Frame),
+		widget.NewLabel("Grow"), ccWidget.NewIntSliderWithData(0, videoHeight, f.Grow), widget.NewLabel(""),
 
 		widget.NewLabel("Hue / Saturation / Value"), widget.NewLabel(""), widget.NewLabel(""),
-		widget.NewLabel("Hue Min"), widget.NewSliderWithData(0, HueMax, form.HueMin), widget.NewLabel(""),
-		widget.NewLabel("Hue Max"), widget.NewSliderWithData(0, HueMax, form.HueMax), widget.NewLabel(""),
-		widget.NewLabel("Sat Min"), widget.NewSliderWithData(0, SatMax, form.SatMin), widget.NewLabel(""),
-		widget.NewLabel("Sat Max"), widget.NewSliderWithData(0, SatMax, form.SatMax), widget.NewLabel(""),
-		widget.NewLabel("Val Min"), widget.NewSliderWithData(0, ValMax, form.ValMin), widget.NewLabel(""),
-		widget.NewLabel("Val Max"), widget.NewSliderWithData(0, ValMax, form.ValMax), widget.NewLabel(""),
+		widget.NewLabel("Hue Min"), ccWidget.NewIntSliderWithData(0, HueMax, f.HueMin), widget.NewLabel(""),
+		widget.NewLabel("Hue Max"), ccWidget.NewIntSliderWithData(0, HueMax, f.HueMax), widget.NewLabel(""),
+		widget.NewLabel("Sat Min"), ccWidget.NewIntSliderWithData(0, SatMax, f.SatMin), widget.NewLabel(""),
+		widget.NewLabel("Sat Max"), ccWidget.NewIntSliderWithData(0, SatMax, f.SatMax), widget.NewLabel(""),
+		widget.NewLabel("Val Min"), ccWidget.NewIntSliderWithData(0, ValMax, f.ValMin), widget.NewLabel(""),
+		widget.NewLabel("Val Max"), ccWidget.NewIntSliderWithData(0, ValMax, f.ValMax), widget.NewLabel(""),
 
 		widget.NewLabel("Crop"), widget.NewLabel(""), widget.NewLabel(""),
-		widget.NewLabel("Left"), widget.NewSliderWithData(0, float64(videoWidth), form.CropLeft), widget.NewLabel(""),
-		widget.NewLabel("Top"), widget.NewSliderWithData(0, float64(videoHeight), form.CropTop), widget.NewLabel(""),
-		widget.NewLabel("Right"), widget.NewSliderWithData(0, float64(videoWidth), form.CropRight), widget.NewLabel(""),
-		widget.NewLabel("Bottom"), widget.NewSliderWithData(0, float64(videoHeight), form.CropBottom), widget.NewLabel(""),
+		widget.NewLabel("Left"), ccWidget.NewIntSliderWithData(0, videoWidth, f.CropLeft), widget.NewLabel(""),
+		widget.NewLabel("Top"), ccWidget.NewIntSliderWithData(0, videoHeight, f.CropTop), widget.NewLabel(""),
+		widget.NewLabel("Right"), ccWidget.NewIntSliderWithData(0, videoWidth, f.CropRight), widget.NewLabel(""),
+		widget.NewLabel("Bottom"), ccWidget.NewIntSliderWithData(0, videoHeight, f.CropBottom), widget.NewLabel(""),
 	)
-	return form
+	return f
 }
 
 func (f Form) OnChange(fn func()) {
 	f.Frame.AddListener(binding.NewDataListener(fn))
-	f.Mode.AddListener(binding.NewDataListener(fn))
 	f.Grow.AddListener(binding.NewDataListener(fn))
 
 	f.HueMin.AddListener(binding.NewDataListener(fn))

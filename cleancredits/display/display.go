@@ -188,14 +188,14 @@ func (d Display) Render() {
 	}
 	d.VideoCapture.Set(
 		gocv.VideoCapturePosFrames,
-		frame,
+		float64(frame),
 	)
 	d.VideoCapture.Read(&mat)
 	img, err := mat.ToImage()
 	if err != nil {
 		fmt.Printf(
-			"Error loading frame %s/%s: %v\n",
-			strconv.FormatFloat(frame, 'f', -1, 64),
+			"Error loading frame %d/%s: %v\n",
+			frame,
 			strconv.FormatFloat(d.VideoCapture.Get(gocv.VideoCaptureFrameCount), 'f', -1, 64),
 			err)
 		return
