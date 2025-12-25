@@ -77,7 +77,7 @@ func buildCleaner(vc *gocv.VideoCapture) fyne.CanvasObject {
 	}
 
 	display := display.NewDisplay(vc, selectedTab, maskForm)
-	content := container.New(layout.NewHBoxLayout(), left, display.Image)
+	content := container.New(layout.NewHBoxLayout(), left, display.Container)
 
 	return content
 }

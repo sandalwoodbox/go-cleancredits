@@ -1,10 +1,5 @@
 package cleancredits
 
-// DisplayModeMask     = "Areas to inpaint"
-// DisplayModeDraw     = "Overrides"
-// DisplayModePreview  = "Preview"
-// DisplayModeOriginal = "Original"
-
 // DisplayMode              binding.String
 // ZoomFactor               float64
 // ZoomCenterX, ZoomCenterY int
