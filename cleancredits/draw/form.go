@@ -25,6 +25,10 @@ type Form struct {
 	Size  binding.Int
 }
 
+type Settings struct {
+	Frame int
+}
+
 func NewForm(frameCount int) Form {
 	f := Form{
 		Frame: binding.NewInt(),
@@ -48,4 +52,14 @@ func (f Form) OnChange(fn func()) {
 	l := binding.NewDataListener(fn)
 	f.Frame.AddListener(l)
 	f.Mode.AddListener(l)
+}
+
+func (f Form) Settings() (Settings, error) {
+	frame, err := f.Frame.Get()
+	if err != nil {
+		return Settings{}, fmt.Errorf("getting frame: %v", err)
+	}
+	return Settings{
+		Frame: frame,
+	}, nil
 }
