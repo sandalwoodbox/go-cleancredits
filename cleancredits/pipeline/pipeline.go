@@ -38,7 +38,9 @@ func NewPipeline(vc *gocv.VideoCapture) Pipeline {
 
 func (p Pipeline) UpdateMask(maskSettings mask.Settings, drawSettings draw.Settings, displaySettings display.Settings) {
 	if maskSettings.Frame != p.MaskSettings.Frame {
-		mat, err := LoadFrame(p.VideoCapture, maskSettings.Frame)
+		mat := gocv.NewMat()
+		defer mat.Close()
+		err := LoadFrame(p.VideoCapture, maskSettings.Frame, &mat)
 		if err != nil {
 			fmt.Printf("Error loading frame %d/%s: %v\n",
 				maskSettings.Frame,
@@ -51,7 +53,8 @@ func (p Pipeline) UpdateMask(maskSettings mask.Settings, drawSettings draw.Setti
 	}
 
 	if p.maskSettingsChanged(maskSettings) {
-		p.Mask = RenderMask(p.MaskFrame, maskSettings)
+		p.Mask = gocv.NewMat()
+		RenderMask(p.MaskFrame, &p.Mask, maskSettings)
 	}
 	// img, err := mat.ToImage()
 	// if err != nil {
