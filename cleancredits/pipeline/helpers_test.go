@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"path"
 	"reflect"
+	"strings"
 	"testing"
 
 	"gocv.io/x/gocv"
+	"gocv.io/x/gocv/contrib"
 
 	"github.com/sandalwoodbox/go-cleancredits/cleancredits/mask"
 )
@@ -153,6 +155,16 @@ func TestRenderMask(t *testing.T) {
 	defer input.Close()
 	LoadFrame(vc, 0, &input)
 
+	hashes := []contrib.ImgHashBase{
+		contrib.PHash{},
+		contrib.AverageHash{},
+		contrib.BlockMeanHash{},
+		contrib.BlockMeanHash{Mode: contrib.BlockMeanHashMode1},
+		contrib.ColorMomentHash{},
+		contrib.NewMarrHildrethHash(),
+		contrib.NewRadialVarianceHash(),
+	}
+
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			// t.Parallel()
@@ -182,17 +194,54 @@ func TestRenderMask(t *testing.T) {
 			if got.Channels() != want.Channels() {
 				t.Fatalf("number of channels not equal. got %d, want %d", got.Channels(), want.Channels())
 			}
-			if !reflect.DeepEqual(got, want) {
-				t.Errorf("rendered mask not equal to expected mask")
+			if got.Type() != want.Type() {
+				t.Fatalf("type not equal. got %s, want %s", got.Type().String(), want.Type().String())
+			}
+			if got.ElemSize() != want.ElemSize() {
+				t.Fatalf("ElemSize not equal. got %d, want %d", got.ElemSize(), want.ElemSize())
+			}
+			if !reflect.DeepEqual(got.GetUCharAt(0, 0), want.GetUCharAt(0, 0)) {
+				t.Fatalf("First pixel not equal. got %v, want %v", got.GetUCharAt(0, 0), want.GetUCharAt(0, 0))
+			}
+
+			gotImg, err := got.ToImage()
+			if err != nil {
+				t.Errorf("Error converting got Mat to img: %v", err)
+			}
+			wantImg, err := want.ToImage()
+			if err != nil {
+				t.Errorf("Error converting want Mat to img: %v", err)
+			}
+			if !reflect.DeepEqual(gotImg, wantImg) {
+				t.Errorf("rendered mask not equal to expected mask. Similarity:\n")
+				for _, hash := range hashes {
+					name := strings.TrimPrefix(fmt.Sprintf("%T", hash), "contrib.")
+					gotHash := gocv.NewMat()
+					wantHash := gocv.NewMat()
+					hash.Compute(got, &gotHash)
+					hash.Compute(want, &wantHash)
+					if gotHash.Empty() {
+						t.Errorf("error computing %s got hash", name)
+					}
+					if wantHash.Empty() {
+						t.Errorf("error computing %s want hash", name)
+					}
+					similarity := hash.Compare(gotHash, wantHash)
+					gotHash.Close()
+					wantHash.Close()
+					t.Errorf("%s: similarity %g\n", name, similarity)
+				}
 
 				gw := gocv.NewWindow(fmt.Sprintf("%s got", tc.name))
 				defer gw.Close()
+				gw.ResizeWindow(1920, 1080)
 				gw.IMShow(got)
 				gw.WaitKey(1)
 				ww := gocv.NewWindow(fmt.Sprintf("%s want", tc.name))
 				defer ww.Close()
+				ww.ResizeWindow(1920, 1080)
 				ww.IMShow(want)
-				ww.WaitKey(5000)
+				ww.WaitKey(30000)
 			}
 		})
 	}

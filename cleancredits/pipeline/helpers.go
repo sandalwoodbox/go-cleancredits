@@ -3,6 +3,7 @@ package pipeline
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"math"
 
 	"github.com/sandalwoodbox/go-cleancredits/cleancredits/mask"
@@ -26,22 +27,29 @@ func LoadFrame(vc *gocv.VideoCapture, n int, dst *gocv.Mat) error {
 }
 
 func RenderMask(mat gocv.Mat, dst *gocv.Mat, s mask.Settings) {
-	if s.CropBottom > s.CropTop {
-		s.CropBottom, s.CropTop = s.CropTop, s.CropBottom
+	// w := gocv.NewWindow("RenderMask")
+	// w.IMShow(mat)
+	// w.SetWindowTitle("RenderMask - mat")
+	// w.WaitKey(2000)
+	if s.CropTop > s.CropBottom {
+		s.CropTop, s.CropBottom = s.CropBottom, s.CropTop
 	}
 	if s.CropLeft > s.CropRight {
 		s.CropLeft, s.CropRight = s.CropRight, s.CropLeft
 	}
-	s.CropBottom = int(math.Min(math.Max(float64(s.CropBottom), 0), float64(mat.Rows())))
-	s.CropTop = int(math.Min(math.Max(float64(s.CropTop), 0), float64(mat.Rows())))
-	s.CropLeft = int(math.Min(math.Max(float64(s.CropLeft), 0), float64(mat.Cols())))
-	s.CropRight = int(math.Min(math.Max(float64(s.CropRight), 0), float64(mat.Cols())))
+	s.CropBottom = int(math.Min(math.Max(float64(s.CropBottom), 1), float64(mat.Rows())))
+	s.CropTop = int(math.Min(math.Max(float64(s.CropTop), 1), float64(mat.Rows())))
+	s.CropLeft = int(math.Min(math.Max(float64(s.CropLeft), 1), float64(mat.Cols())))
+	s.CropRight = int(math.Min(math.Max(float64(s.CropRight), 1), float64(mat.Cols())))
 
 	fmt.Printf("mat dims: %d x %d, %d\n", mat.Cols(), mat.Rows(), mat.Channels())
 	frameHSV := gocv.NewMat()
 	defer frameHSV.Close()
 	gocv.CvtColor(mat, &frameHSV, gocv.ColorBGRToHSV)
 	fmt.Printf("frameHSV dims: %d x %d, %d\n", frameHSV.Cols(), frameHSV.Rows(), frameHSV.Channels())
+	// w.IMShow(frameHSV)
+	// w.SetWindowTitle("RenderMask - frameHSV")
+	// w.WaitKey(2000)
 
 	hsvMask := gocv.NewMat()
 	defer hsvMask.Close()
@@ -52,6 +60,9 @@ func RenderMask(mat gocv.Mat, dst *gocv.Mat, s mask.Settings) {
 		&hsvMask,
 	)
 	fmt.Printf("hsvMask dims: %d x %d, %d\n", hsvMask.Cols(), hsvMask.Rows(), hsvMask.Channels())
+	// w.IMShow(hsvMask)
+	// w.SetWindowTitle("RenderMask - hsvMask")
+	// w.WaitKey(2000)
 
 	var grown gocv.Mat
 	if s.Grow > 0 {
@@ -64,19 +75,24 @@ func RenderMask(mat gocv.Mat, dst *gocv.Mat, s mask.Settings) {
 	}
 	defer grown.Close()
 	fmt.Printf("grown dims: %d x %d, %d\n", grown.Cols(), grown.Rows(), grown.Channels())
+	// w.IMShow(grown)
+	// w.SetWindowTitle("RenderMask - grown")
+	// w.WaitKey(2000)
 
 	bboxMask := gocv.Zeros(hsvMask.Rows(), hsvMask.Cols(), gocv.MatTypeCV8U)
 	defer bboxMask.Close()
-
-	cropArea := gocv.Ones(s.CropBottom-s.CropTop, s.CropRight-s.CropLeft, gocv.MatTypeCV8U)
-	defer cropArea.Close()
-
 	rect := image.Rect(s.CropLeft, s.CropTop, s.CropRight, s.CropBottom)
-	r := bboxMask.Region(rect)
-	gocv.Add(r, cropArea, &r)
-
+	gocv.Rectangle(&bboxMask, rect, color.RGBA{255, 255, 255, 255}, -1)
+	fmt.Printf("Crop: l%d, t%d, r%d, b%d\n", s.CropLeft, s.CropTop, s.CropRight, s.CropBottom)
 	fmt.Printf("bboxMask dims: %d x %d, %d\n", bboxMask.Cols(), bboxMask.Rows(), bboxMask.Channels())
-	gocv.BitwiseAnd(grown, bboxMask, dst)
+	// w.IMShow(bboxMask)
+	// w.SetWindowTitle("RenderMask - bboxMask")
+	// w.WaitKey(2000)
+	// gocv.BitwiseAnd(grown, bboxMask, dst)
+	gocv.BitwiseAndWithMask(grown, grown, dst, bboxMask)
 
 	fmt.Printf("dst dims: %d x %d, %d\n", dst.Cols(), dst.Rows(), dst.Channels())
+	// w.IMShow(*dst)
+	// w.SetWindowTitle("RenderMask - dst")
+	// w.WaitKey(2000)
 }
