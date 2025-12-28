@@ -13,16 +13,116 @@ import (
 	"github.com/sandalwoodbox/go-cleancredits/cleancredits/mask"
 )
 
-func TestRenderMask(t *testing.T) {
+func sliceToHSVMat(sl [][][]uint8) gocv.Mat {
+	h := gocv.NewMatWithSize(len(sl), len(sl[0]), gocv.MatTypeCV8U)
+	defer h.Close()
+	s := gocv.NewMatWithSize(len(sl), len(sl[0]), gocv.MatTypeCV8U)
+	defer s.Close()
+	v := gocv.NewMatWithSize(len(sl), len(sl[0]), gocv.MatTypeCV8U)
+	defer v.Close()
+	for ri, row := range sl {
+		for ci, col := range row {
+			h.SetUCharAt(ri, ci, col[0])
+			s.SetUCharAt(ri, ci, col[1])
+			v.SetUCharAt(ri, ci, col[2])
+		}
+	}
+	m := gocv.NewMatWithSize(len(sl), len(sl[0]), gocv.MatTypeCV8UC3)
+	gocv.Merge([]gocv.Mat{h, s, v}, &m)
+	return m
+}
+
+func sliceToGrayscaleMat(sl [][]uint8) gocv.Mat {
+	m := gocv.NewMatWithSize(len(sl), len(sl[0]), gocv.MatTypeCV8U)
+	for ri, row := range sl {
+		for ci, col := range row {
+			m.SetUCharAt(ri, ci, col)
+		}
+	}
+	return m
+}
+
+func compareMats(t *testing.T, got, want gocv.Mat) {
+	hashes := []contrib.ImgHashBase{
+		contrib.PHash{},
+		contrib.AverageHash{},
+		contrib.BlockMeanHash{},
+		contrib.BlockMeanHash{Mode: contrib.BlockMeanHashMode1},
+		contrib.ColorMomentHash{},
+		contrib.NewMarrHildrethHash(),
+		contrib.NewRadialVarianceHash(),
+	}
+	if got.Cols() != want.Cols() || got.Rows() != want.Rows() {
+		t.Fatalf("dimensions not equal. got %d x %d, want %d x %d", got.Cols(), got.Rows(), want.Cols(), want.Rows())
+	}
+	if got.Channels() != want.Channels() {
+		t.Fatalf("number of channels not equal. got %d, want %d", got.Channels(), want.Channels())
+	}
+	if got.Type() != want.Type() {
+		t.Fatalf("type not equal. got %s, want %s", got.Type().String(), want.Type().String())
+	}
+	if got.ElemSize() != want.ElemSize() {
+		t.Fatalf("ElemSize not equal. got %d, want %d", got.ElemSize(), want.ElemSize())
+	}
+	// if !reflect.DeepEqual(got.GetUCharAt(0, 0), want.GetUCharAt(0, 0)) {
+	// 	t.Fatalf("First pixel not equal. got %v, want %v", got.GetUCharAt(0, 0), want.GetUCharAt(0, 0))
+	// }
+	// if !reflect.DeepEqual(got.GetUCharAt(720-1, 1080-1), want.GetUCharAt(720-1, 1080-1)) {
+	// 	t.Fatalf("Last pixel not equal. got %v, want %v", got.GetUCharAt(720-1, 1080-1), want.GetUCharAt(720-1, 1080-1))
+	// }
+
+	gotImg, err := got.ToImage()
+	if err != nil {
+		t.Errorf("Error converting got Mat to img: %v", err)
+	}
+	wantImg, err := want.ToImage()
+	if err != nil {
+		t.Errorf("Error converting want Mat to img: %v", err)
+	}
+	if !reflect.DeepEqual(gotImg, wantImg) {
+		t.Errorf("rendered mask not equal to expected mask. Similarity:\n")
+		for _, hash := range hashes {
+			name := strings.TrimPrefix(fmt.Sprintf("%T", hash), "contrib.")
+			gotHash := gocv.NewMat()
+			wantHash := gocv.NewMat()
+			hash.Compute(got, &gotHash)
+			hash.Compute(want, &wantHash)
+			if gotHash.Empty() {
+				t.Errorf("error computing %s got hash", name)
+			}
+			if wantHash.Empty() {
+				t.Errorf("error computing %s want hash", name)
+			}
+			similarity := hash.Compare(gotHash, wantHash)
+			gotHash.Close()
+			wantHash.Close()
+			t.Errorf("%s: similarity %g\n", name, similarity)
+		}
+
+		gw := gocv.NewWindow(fmt.Sprintf("%s got", t.Name()))
+		defer gw.Close()
+		gw.ResizeWindow(1920, 1080)
+		gw.IMShow(got)
+		gw.WaitKey(1)
+		ww := gocv.NewWindow(fmt.Sprintf("%s want", t.Name()))
+		defer ww.Close()
+		ww.ResizeWindow(1920, 1080)
+		ww.IMShow(want)
+		ww.WaitKey(5000)
+	}
+}
+
+func TestRenderMask_horses(t *testing.T) {
 	cases := []struct {
-		name                                     string
-		hueMin, hueMax                           int
-		satMin, satMax                           int
-		valMin, valMax                           int
-		grow                                     int
-		cropLeft, cropRight, cropTop, cropBottom int
-		inputMask                                string
-		want                                     string
+		name                string
+		hueMin, hueMax      int
+		satMin, satMax      int
+		valMin, valMax      int
+		grow                int
+		cropLeft, cropRight int
+		cropTop, cropBottom int
+		inputMask           string
+		want                string
 	}{
 		{
 			name:       "keep",
@@ -142,7 +242,7 @@ func TestRenderMask(t *testing.T) {
 			cropRight:  2000,
 			cropTop:    9001,
 			cropBottom: 9001,
-			inputMask:  "horses-720p-mask",
+			inputMask:  "horses-720p-mask.png",
 			want:       "input_mask.png",
 		},
 	}
@@ -155,19 +255,8 @@ func TestRenderMask(t *testing.T) {
 	defer input.Close()
 	LoadFrame(vc, 0, &input)
 
-	hashes := []contrib.ImgHashBase{
-		contrib.PHash{},
-		contrib.AverageHash{},
-		contrib.BlockMeanHash{},
-		contrib.BlockMeanHash{Mode: contrib.BlockMeanHashMode1},
-		contrib.ColorMomentHash{},
-		contrib.NewMarrHildrethHash(),
-		contrib.NewRadialVarianceHash(),
-	}
-
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			// t.Parallel()
 			ms := mask.Settings{
 				HueMin:     tc.hueMin,
 				HueMax:     tc.hueMax,
@@ -184,65 +273,486 @@ func TestRenderMask(t *testing.T) {
 			got := gocv.NewMat()
 			defer got.Close()
 			RenderMask(input, &got, ms)
+
+			if tc.inputMask != "" {
+				m := gocv.IMRead(
+					path.Join("testdata", tc.inputMask),
+					gocv.IMReadGrayScale,
+				)
+				defer m.Close()
+				CombineMasks(mask.Include, got, &m, &got)
+			}
+
 			want := gocv.IMRead(
 				path.Join("testdata/render_mask_output", tc.want),
 				gocv.IMReadGrayScale,
 			)
-			if got.Cols() != want.Cols() || got.Rows() != want.Rows() {
-				t.Fatalf("dimensions not equal. got %d x %d, want %d x %d", got.Cols(), got.Rows(), want.Cols(), want.Rows())
+			defer want.Close()
+			compareMats(t, got, want)
+		})
+	}
+}
+
+func TestRenderMask_manual(t *testing.T) {
+	cases := []struct {
+		name                string
+		hsv                 [][][]uint8
+		hueMin, hueMax      int
+		satMin, satMax      int
+		valMin, valMax      int
+		grow                int
+		cropLeft, cropRight int
+		cropTop, cropBottom int
+		inputMask           [][]uint8
+		want                [][]uint8
+	}{
+		{
+			name: "keep all",
+			hsv: [][][]uint8{
+				{
+					{1, 1, 1},
+					{50, 50, 50},
+				},
+				{
+					{100, 100, 100},
+					{150, 150, 150},
+				},
+			},
+			hueMax:     179,
+			satMax:     255,
+			valMax:     255,
+			cropRight:  2,
+			cropBottom: 2,
+			want: [][]uint8{
+				{255, 255},
+				{255, 255},
+			},
+		},
+		{
+			name: "hue partial",
+			hsv: [][][]uint8{
+				{
+					{1, 1, 1},
+					{50, 50, 50},
+				},
+				{
+					{100, 100, 100},
+					{150, 150, 150},
+				},
+			},
+			hueMin:     25,
+			hueMax:     179,
+			satMax:     255,
+			valMax:     255,
+			cropRight:  2,
+			cropBottom: 2,
+			want: [][]uint8{
+				{0, 255},
+				{255, 255},
+			},
+		},
+		{
+			name: "sat partial",
+			hsv: [][][]uint8{
+				{
+					{1, 1, 1},
+					{50, 50, 50},
+				},
+				{
+					{100, 100, 100},
+					{150, 150, 150},
+				},
+			},
+			hueMax:     179,
+			satMin:     25,
+			satMax:     255,
+			valMax:     255,
+			cropRight:  2,
+			cropBottom: 2,
+			want: [][]uint8{
+				{0, 255},
+				{255, 255},
+			},
+		},
+		{
+			name: "val partial",
+			hsv: [][][]uint8{
+				{
+					{1, 1, 1},
+					{50, 50, 50},
+				},
+				{
+					{100, 100, 100},
+					{150, 150, 150},
+				},
+			},
+			hueMax:     179,
+			satMax:     255,
+			valMin:     25,
+			valMax:     255,
+			cropRight:  2,
+			cropBottom: 2,
+			want: [][]uint8{
+				{0, 255},
+				{255, 255},
+			},
+		},
+		{
+			name: "hsv partial",
+			hsv: [][][]uint8{
+				{
+					{1, 1, 1},
+					{50, 50, 50},
+				},
+				{
+					{100, 100, 100},
+					{150, 150, 150},
+				},
+			},
+			hueMin:     25,
+			hueMax:     179,
+			satMin:     75,
+			satMax:     255,
+			valMin:     110,
+			valMax:     255,
+			cropRight:  2,
+			cropBottom: 2,
+			want: [][]uint8{
+				{0, 0},
+				{0, 255},
+			},
+		},
+		{
+			name: "hsv grow",
+			hsv: [][][]uint8{
+				{
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+				},
+				{
+					{1, 1, 1},
+					{100, 100, 100},
+					{1, 1, 1},
+				},
+				{
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+				},
+			},
+			hueMin:     25,
+			hueMax:     179,
+			satMin:     75,
+			satMax:     255,
+			valMin:     25,
+			valMax:     255,
+			grow:       2,
+			cropRight:  3,
+			cropBottom: 3,
+			want: [][]uint8{
+				{0, 0, 0},
+				{0, 255, 255},
+				{0, 255, 255},
+			},
+		},
+		{
+			name: "hsv grow 3",
+			hsv: [][][]uint8{
+				{
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+				},
+				{
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+				},
+				{
+					{1, 1, 1},
+					{1, 1, 1},
+					{100, 100, 100},
+					{1, 1, 1},
+					{1, 1, 1},
+				},
+				{
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+				},
+				{
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+				},
+			},
+			hueMin:     25,
+			hueMax:     179,
+			satMin:     75,
+			satMax:     255,
+			valMin:     25,
+			valMax:     255,
+			grow:       3,
+			cropRight:  4,
+			cropBottom: 4,
+			want: [][]uint8{
+				{0, 0, 0, 0, 0},
+				{0, 255, 255, 255, 0},
+				{0, 255, 255, 255, 0},
+				{0, 255, 255, 255, 0},
+				{0, 0, 0, 0, 0},
+			},
+		},
+		{
+			name: "crop 1",
+			hsv: [][][]uint8{
+				{
+					{1, 1, 1},
+					{50, 50, 50},
+				},
+				{
+					{100, 100, 100},
+					{150, 150, 150},
+				},
+			},
+			hueMax:     179,
+			satMax:     255,
+			valMax:     255,
+			cropRight:  1,
+			cropBottom: 1,
+			want: [][]uint8{
+				{255, 0},
+				{0, 0},
+			},
+		},
+		{
+			name: "crop 3",
+			hsv: [][][]uint8{
+				{
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+				},
+				{
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+				},
+				{
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+				},
+				{
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+				},
+				{
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+					{1, 1, 1},
+				},
+			},
+			hueMax:     179,
+			satMax:     255,
+			valMax:     255,
+			cropLeft:   1,
+			cropRight:  4,
+			cropTop:    1,
+			cropBottom: 4,
+			want: [][]uint8{
+				{0, 0, 0, 0, 0},
+				{0, 255, 255, 255, 0},
+				{0, 255, 255, 255, 0},
+				{0, 255, 255, 255, 0},
+				{0, 0, 0, 0, 0},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ms := mask.Settings{
+				HueMin:     tc.hueMin,
+				HueMax:     tc.hueMax,
+				SatMin:     tc.satMin,
+				SatMax:     tc.satMax,
+				ValMin:     tc.valMin,
+				ValMax:     tc.valMax,
+				Grow:       tc.grow,
+				CropLeft:   tc.cropLeft,
+				CropRight:  tc.cropRight,
+				CropTop:    tc.cropTop,
+				CropBottom: tc.cropBottom,
 			}
-			if got.Channels() != want.Channels() {
-				t.Fatalf("number of channels not equal. got %d, want %d", got.Channels(), want.Channels())
-			}
-			if got.Type() != want.Type() {
-				t.Fatalf("type not equal. got %s, want %s", got.Type().String(), want.Type().String())
-			}
-			if got.ElemSize() != want.ElemSize() {
-				t.Fatalf("ElemSize not equal. got %d, want %d", got.ElemSize(), want.ElemSize())
-			}
-			if !reflect.DeepEqual(got.GetUCharAt(0, 0), want.GetUCharAt(0, 0)) {
-				t.Fatalf("First pixel not equal. got %v, want %v", got.GetUCharAt(0, 0), want.GetUCharAt(0, 0))
+			hsv := sliceToHSVMat(tc.hsv)
+			bgr := gocv.NewMat()
+			defer bgr.Close()
+			gocv.CvtColor(hsv, &bgr, gocv.ColorHSVToBGR)
+			got := gocv.NewMat()
+			defer got.Close()
+			want := sliceToGrayscaleMat(tc.want)
+			defer want.Close()
+			RenderMask(bgr, &got, ms)
+			compareMats(t, got, want)
+		})
+	}
+}
+
+func TestCombineMasks(t *testing.T) {
+	cases := []struct {
+		name   string
+		mode   string
+		top    [][]uint8
+		bottom [][]uint8
+		want   [][]uint8
+	}{
+		{
+			name: "include all",
+			mode: mask.Include,
+			top: [][]uint8{
+				{255, 255},
+				{255, 255},
+			},
+			bottom: [][]uint8{
+				{0, 255},
+				{255, 255},
+			},
+			want: [][]uint8{
+				{255, 255},
+				{255, 255},
+			},
+		},
+		{
+			name: "include none",
+			mode: mask.Include,
+			top: [][]uint8{
+				{0, 0},
+				{0, 0},
+			},
+			bottom: [][]uint8{
+				{0, 255},
+				{255, 255},
+			},
+			want: [][]uint8{
+				{0, 255},
+				{255, 255},
+			},
+		},
+		{
+			name: "include partial",
+			mode: mask.Include,
+			top: [][]uint8{
+				{255, 0},
+				{0, 255},
+			},
+			bottom: [][]uint8{
+				{0, 0},
+				{255, 255},
+			},
+			want: [][]uint8{
+				{255, 0},
+				{255, 255},
+			},
+		},
+		{
+			name: "exclude all",
+			mode: mask.Exclude,
+			top: [][]uint8{
+				{255, 255},
+				{255, 255},
+			},
+			bottom: [][]uint8{
+				{255, 255},
+				{255, 255},
+			},
+			want: [][]uint8{
+				{0, 0},
+				{0, 0},
+			},
+		},
+		{
+			name: "exclude none",
+			mode: mask.Exclude,
+			top: [][]uint8{
+				{0, 0},
+				{0, 0},
+			},
+			bottom: [][]uint8{
+				{255, 0},
+				{255, 255},
+			},
+			want: [][]uint8{
+				{255, 0},
+				{255, 255},
+			},
+		},
+		{
+			name: "exclude partial",
+			mode: mask.Exclude,
+			top: [][]uint8{
+				{255, 0},
+				{0, 255},
+			},
+			bottom: [][]uint8{
+				{255, 0},
+				{255, 255},
+			},
+			want: [][]uint8{
+				{0, 0},
+				{255, 0},
+			},
+		},
+		{
+			name: "exclude no bottom",
+			mode: mask.Exclude,
+			top: [][]uint8{
+				{255, 0},
+				{0, 255},
+			},
+			want: [][]uint8{
+				{0, 255},
+				{255, 0},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			top := sliceToGrayscaleMat(tc.top)
+			defer top.Close()
+			var bottom *gocv.Mat
+			if tc.bottom != nil {
+				m := sliceToGrayscaleMat(tc.bottom)
+				bottom = &m
 			}
 
-			gotImg, err := got.ToImage()
-			if err != nil {
-				t.Errorf("Error converting got Mat to img: %v", err)
-			}
-			wantImg, err := want.ToImage()
-			if err != nil {
-				t.Errorf("Error converting want Mat to img: %v", err)
-			}
-			if !reflect.DeepEqual(gotImg, wantImg) {
-				t.Errorf("rendered mask not equal to expected mask. Similarity:\n")
-				for _, hash := range hashes {
-					name := strings.TrimPrefix(fmt.Sprintf("%T", hash), "contrib.")
-					gotHash := gocv.NewMat()
-					wantHash := gocv.NewMat()
-					hash.Compute(got, &gotHash)
-					hash.Compute(want, &wantHash)
-					if gotHash.Empty() {
-						t.Errorf("error computing %s got hash", name)
-					}
-					if wantHash.Empty() {
-						t.Errorf("error computing %s want hash", name)
-					}
-					similarity := hash.Compare(gotHash, wantHash)
-					gotHash.Close()
-					wantHash.Close()
-					t.Errorf("%s: similarity %g\n", name, similarity)
-				}
-
-				gw := gocv.NewWindow(fmt.Sprintf("%s got", tc.name))
-				defer gw.Close()
-				gw.ResizeWindow(1920, 1080)
-				gw.IMShow(got)
-				gw.WaitKey(1)
-				ww := gocv.NewWindow(fmt.Sprintf("%s want", tc.name))
-				defer ww.Close()
-				ww.ResizeWindow(1920, 1080)
-				ww.IMShow(want)
-				ww.WaitKey(30000)
-			}
+			got := gocv.NewMat()
+			defer got.Close()
+			want := sliceToGrayscaleMat(tc.want)
+			defer want.Close()
+			CombineMasks(tc.mode, top, bottom, &got)
+			compareMats(t, got, want)
 		})
 	}
 }
