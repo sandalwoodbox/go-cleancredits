@@ -53,18 +53,16 @@ func (p Pipeline) UpdateMask(maskSettings mask.Settings, drawSettings draw.Setti
 	}
 
 	if p.maskSettingsChanged(maskSettings) {
+		if !p.Mask.Empty() {
+			p.Mask.Close()
+		}
 		p.Mask = gocv.NewMat()
 		RenderMask(p.MaskFrame, &p.Mask, maskSettings)
 	}
-	// img, err := mat.ToImage()
-	// if err != nil {
-	// 	fmt.Println("Error converting mat to image: ", err)
-	// 	return
-	// }
 }
 
-func (p Pipeline) ApplyMask(frame int) image.Image {
-	return EmptyImage()
+func (p Pipeline) ApplyMask(frame int, dst *gocv.Mat) {
+	LoadFrame(p.VideoCapture, frame, dst)
 }
 
 func (p Pipeline) maskSettingsChanged(ms mask.Settings) bool {

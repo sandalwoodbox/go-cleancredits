@@ -65,11 +65,10 @@ func New(vc *gocv.VideoCapture) Cleaner {
 			c.SelectedTab.Set(RenderTabName)
 		}
 	}
-	imgPreview := preview.NewPreview()
 	right := container.New(
 		layout.NewVBoxLayout(),
 		c.DisplayForm.Container,
-		imgPreview.Image,
+		c.Preview.Container,
 	)
 
 	c.Container = container.New(layout.NewHBoxLayout(), left, right)
@@ -130,5 +129,13 @@ func (c Cleaner) UpdatePipeline() {
 	case "Draw":
 		fNum = drawSettings.Frame
 	}
-	c.Preview.SetImage(c.Pipeline.ApplyMask(fNum))
+	m := gocv.NewMat()
+	defer m.Close()
+	c.Pipeline.ApplyMask(fNum, &m)
+	img, err := m.ToImage()
+	if err != nil {
+		fmt.Println("error applying mask")
+	}
+
+	c.Preview.SetImage(img)
 }

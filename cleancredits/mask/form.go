@@ -62,6 +62,7 @@ type Settings struct {
 func NewForm(frameCount, videoWidth, videoHeight int) Form {
 	f := Form{
 		Frame: binding.NewInt(),
+		Mode:  binding.NewString(),
 
 		HueMin: binding.NewInt(),
 		HueMax: binding.NewInt(),
@@ -75,6 +76,10 @@ func NewForm(frameCount, videoWidth, videoHeight int) Form {
 		CropTop:    binding.NewInt(),
 		CropRight:  binding.NewInt(),
 		CropBottom: binding.NewInt(),
+	}
+	err := f.Mode.Set(Include)
+	if err != nil {
+		fmt.Println("Error setting Mode: ", err)
 	}
 	f.Container = container.New(
 		layout.NewGridLayout(3),
