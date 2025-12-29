@@ -81,6 +81,26 @@ func NewForm(frameCount, videoWidth, videoHeight int) Form {
 	if err != nil {
 		fmt.Println("Error setting Mode: ", err)
 	}
+	err = f.HueMax.Set(HueMax)
+	if err != nil {
+		fmt.Println("Error setting HueMax: ", err)
+	}
+	err = f.SatMax.Set(SatMax)
+	if err != nil {
+		fmt.Println("Error setting SatMax: ", err)
+	}
+	err = f.ValMax.Set(ValMax)
+	if err != nil {
+		fmt.Println("Error setting ValMax: ", err)
+	}
+	err = f.CropRight.Set(videoWidth)
+	if err != nil {
+		fmt.Println("Error setting CropRight: ", err)
+	}
+	err = f.CropBottom.Set(videoHeight)
+	if err != nil {
+		fmt.Println("Error setting CropBottom: ", err)
+	}
 	f.Container = container.New(
 		layout.NewGridLayout(3),
 		widget.NewLabel("Frame"), ccWidget.NewIntSliderWithData(0, frameCount-1, f.Frame), ccWidget.NewIntEntryWithData(f.Frame),
@@ -92,7 +112,7 @@ func NewForm(frameCount, videoWidth, videoHeight int) Form {
 		widget.NewLabel("Sat Max"), ccWidget.NewIntSliderWithData(0, SatMax, f.SatMax), widget.NewLabel(""),
 		widget.NewLabel("Val Min"), ccWidget.NewIntSliderWithData(0, ValMax, f.ValMin), widget.NewLabel(""),
 		widget.NewLabel("Val Max"), ccWidget.NewIntSliderWithData(0, ValMax, f.ValMax), widget.NewLabel(""),
-		widget.NewLabel("Grow"), ccWidget.NewIntSliderWithData(0, videoHeight, f.Grow), widget.NewLabel(""),
+		widget.NewLabel("Grow"), ccWidget.NewIntSliderWithData(0, 20, f.Grow), widget.NewLabel(""),
 
 		widget.NewLabel("Crop"), widget.NewLabel(""), widget.NewLabel(""),
 		widget.NewLabel("Left"), ccWidget.NewIntSliderWithData(0, videoWidth, f.CropLeft), widget.NewLabel(""),

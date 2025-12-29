@@ -23,7 +23,7 @@ const (
 
 const ZoomFit = "Fit"
 
-var ZoomLevelMap = map[string]float32{
+var ZoomLevelMap = map[string]float64{
 	ZoomFit: 0,
 	"10%":   .10,
 	"25%":   .25,

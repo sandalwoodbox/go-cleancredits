@@ -9,6 +9,10 @@ import (
 	"gocv.io/x/gocv"
 )
 
+func ClampInt(n, min, max int) int {
+	return int(math.Min(math.Max(float64(n), float64(min)), float64(max)))
+}
+
 func EmptyImage() image.Image {
 	return image.NewRGBA(image.Rect(0, 0, 1920, 1080))
 }
@@ -37,10 +41,10 @@ func RenderMask(mat gocv.Mat, dst *gocv.Mat, s mask.Settings) {
 	if s.CropLeft > s.CropRight {
 		s.CropLeft, s.CropRight = s.CropRight, s.CropLeft
 	}
-	s.CropBottom = int(math.Min(math.Max(float64(s.CropBottom), 0), float64(mat.Rows())))
-	s.CropTop = int(math.Min(math.Max(float64(s.CropTop), 0), float64(mat.Rows())))
-	s.CropLeft = int(math.Min(math.Max(float64(s.CropLeft), 0), float64(mat.Cols())))
-	s.CropRight = int(math.Min(math.Max(float64(s.CropRight), 0), float64(mat.Cols())))
+	s.CropBottom = ClampInt(s.CropBottom, 0, mat.Rows())
+	s.CropTop = ClampInt(s.CropTop, 0, mat.Rows())
+	s.CropLeft = ClampInt(s.CropLeft, 0, mat.Cols())
+	s.CropRight = ClampInt(s.CropRight, 0, mat.Cols())
 
 	// fmt.Printf("mat dims: %d x %d, %d\n", mat.Cols(), mat.Rows(), mat.Channels())
 	frameHSV := gocv.NewMat()
@@ -117,4 +121,26 @@ func CombineMasks(mode string, top gocv.Mat, bottom, dst *gocv.Mat) {
 		return
 	}
 	gocv.BitwiseAnd(inv, *bottom, dst)
+}
+
+func ZoomCropRectangle(zoomFactor float64, anchorX, anchorY, videoWidth, videoHeight, maxWidth, maxHeight int) image.Rectangle {
+	// zoom width and height are the dimensions of the box in the original
+	// image that will be zoomed in (or out) and shown to the user. This should
+	// be the largest possible width/height that will fit in the display box
+	// after the zoom is applied.
+	zoomWidth := int(math.Min(float64(videoWidth)*zoomFactor, float64(maxWidth)) / zoomFactor)
+	zoomHeight := int(math.Min(float64(videoHeight)*zoomFactor, float64(maxHeight)) / zoomFactor)
+
+	// Crop x and y are set at half the zoom width away from the zoom center,
+	// in order to center it. However, the zoom center may be near an edge, so
+	// we need to clip it between 0 and the farthest right point possible that
+	// won't spill over the video width. If the entire frame should be visible,
+	// the crop x and y will always be 0.
+	cropX := ClampInt(anchorX-(zoomWidth/2), 0, int(math.Max(float64(videoWidth-zoomWidth), 0)))
+	cropY := ClampInt(
+		anchorY-(zoomHeight/2),
+		0,
+		max(videoHeight-zoomHeight, 0),
+	)
+	return image.Rect(cropX, cropY, cropX+zoomWidth, cropY+zoomHeight)
 }

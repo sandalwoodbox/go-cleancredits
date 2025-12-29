@@ -14,55 +14,110 @@ import (
 
 type Pipeline struct {
 	VideoCapture *gocv.VideoCapture
+	VideoWidth   int
+	VideoHeight  int
 
 	// Cached images
+	DisplayFrame      gocv.Mat
 	MaskFrame         gocv.Mat
 	Mask              gocv.Mat
-	MaskWithInput     image.Image
-	MaskWithOverrides image.Image
-	Inpainted         image.Image
-	Preview           image.Image
-	Zoomed            image.Image
+	MaskWithInput     gocv.Mat
+	MaskWithOverrides gocv.Mat
+	Inpainted         gocv.Mat
+	Display           gocv.Mat
+	Zoomed            gocv.Mat
 
 	// Last rendered settings
-	MaskSettings    mask.Settings
-	DrawSettings    draw.Settings
-	DisplaySettings display.Settings
+	DisplayFrameNumber int
+	MaskSettings       mask.Settings
+	DrawSettings       draw.Settings
+	DisplaySettings    display.Settings
+
+	// Partial render status
+	MaskChanged bool
 }
 
 func NewPipeline(vc *gocv.VideoCapture) Pipeline {
+	w := int(vc.Get(gocv.VideoCaptureFrameWidth))
+	h := int(vc.Get(gocv.VideoCaptureFrameWidth))
 	return Pipeline{
-		VideoCapture: vc,
+		VideoCapture:      vc,
+		VideoWidth:        w,
+		VideoHeight:       h,
+		DisplayFrame:      gocv.NewMat(),
+		MaskFrame:         gocv.NewMat(),
+		Mask:              gocv.NewMat(),
+		MaskWithInput:     gocv.NewMat(),
+		MaskWithOverrides: gocv.NewMat(),
+		Inpainted:         gocv.NewMat(),
+		Display:           gocv.NewMat(),
+		Zoomed:            gocv.NewMat(),
 	}
 }
 
-func (p Pipeline) UpdateMask(maskSettings mask.Settings, drawSettings draw.Settings, displaySettings display.Settings) {
-	if maskSettings.Frame != p.MaskSettings.Frame {
+func (p Pipeline) UpdateMask(ms mask.Settings, drawSettings draw.Settings) {
+	if ms.Frame != p.MaskSettings.Frame {
 		mat := gocv.NewMat()
 		defer mat.Close()
-		err := LoadFrame(p.VideoCapture, maskSettings.Frame, &mat)
+		err := LoadFrame(p.VideoCapture, ms.Frame, &mat)
 		if err != nil {
 			fmt.Printf("Error loading frame %d/%s: %v\n",
-				maskSettings.Frame,
+				ms.Frame,
 				strconv.FormatFloat(p.VideoCapture.Get(gocv.VideoCaptureFrameCount), 'f', -1, 64),
 				err)
 			return
 		}
 		p.MaskFrame = mat
-		p.MaskSettings.Frame = maskSettings.Frame
+		p.MaskSettings.Frame = ms.Frame
 	}
 
-	if p.maskSettingsChanged(maskSettings) {
-		if !p.Mask.Empty() {
-			p.Mask.Close()
-		}
+	if p.maskSettingsChanged(ms) {
+		p.Mask.Close()
 		p.Mask = gocv.NewMat()
-		RenderMask(p.MaskFrame, &p.Mask, maskSettings)
+		RenderMask(p.MaskFrame, &p.Mask, ms)
+		p.MaskSettings = ms
+		p.MaskChanged = true
 	}
+
+	// TODO: Take layers into account
+	p.MaskWithInput = p.Mask.Clone()
+
+	// TODO: Take overrides (drawn) into account
+	p.MaskWithOverrides = p.MaskWithInput.Clone()
 }
 
-func (p Pipeline) ApplyMask(frame int, dst *gocv.Mat) {
-	LoadFrame(p.VideoCapture, frame, dst)
+func (p Pipeline) ApplyMask(frame int, ds display.Settings, dst *gocv.Mat) {
+	frameChanged := frame != p.DisplayFrameNumber || p.DisplayFrame.Empty()
+	if frameChanged {
+		LoadFrame(p.VideoCapture, frame, &p.DisplayFrame)
+		p.DisplayFrameNumber = frame
+	}
+
+	modeChanged := frameChanged || p.DisplaySettings.Mode != ds.Mode || p.MaskChanged
+	if modeChanged {
+		switch ds.Mode {
+		case display.ViewOriginal:
+			gocv.CvtColor(p.DisplayFrame, &p.Display, gocv.ColorBGRToRGBA)
+		case display.ViewMask:
+			gocv.BitwiseAnd(p.DisplayFrame, p.MaskWithOverrides, &p.Display)
+			gocv.CvtColor(p.Display, &p.Display, gocv.ColorBGRToRGBA)
+		case display.ViewDraw:
+			// TODO: Display draw layer
+			gocv.CvtColor(p.DisplayFrame, &p.Display, gocv.ColorBGRToRGBA)
+		default: // display.ViewPreview
+			gocv.CvtColor(p.DisplayFrame, &p.Display, gocv.ColorBGRToRGB)
+			// TODO: allow setting inpaint radius
+			gocv.Inpaint(p.Display, p.MaskWithOverrides, &p.Display, 3, gocv.Telea)
+		}
+	}
+
+	zoomChanged := modeChanged || p.zoomChanged(ds)
+	if zoomChanged {
+		zf := display.ZoomLevelMap[ds.Zoom]
+		r := ZoomCropRectangle(zf, ds.AnchorX, ds.AnchorY, p.VideoWidth, p.VideoHeight, 720, 480)
+		gocv.Resize(p.Display.Region(r), &p.Zoomed, image.Point{}, zf, zf, gocv.InterpolationNearestNeighbor)
+	}
+	p.DisplaySettings = ds
 }
 
 func (p Pipeline) maskSettingsChanged(ms mask.Settings) bool {
@@ -78,6 +133,16 @@ func (p Pipeline) maskSettingsChanged(ms mask.Settings) bool {
 		ms.CropTop != p.MaskSettings.CropTop,
 		ms.CropRight != p.MaskSettings.CropRight,
 		ms.CropBottom != p.MaskSettings.CropBottom:
+		return true
+	}
+	return false
+}
+
+func (p Pipeline) zoomChanged(ds display.Settings) bool {
+	switch {
+	case ds.Zoom != p.DisplaySettings.Zoom,
+		ds.AnchorX != p.DisplaySettings.AnchorX,
+		ds.AnchorY != p.DisplaySettings.AnchorY:
 		return true
 	}
 	return false

@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"fmt"
+	"image"
 	"path"
 	"reflect"
 	"strings"
@@ -12,6 +13,58 @@ import (
 
 	"github.com/sandalwoodbox/go-cleancredits/cleancredits/mask"
 )
+
+func TestClampInt(t *testing.T) {
+	cases := []struct {
+		name              string
+		n, min, max, want int
+	}{
+		{
+			name: "in range",
+			n:    5,
+			min:  1,
+			max:  10,
+			want: 5,
+		},
+		{
+			name: "below range",
+			n:    -1,
+			min:  1,
+			max:  10,
+			want: 1,
+		},
+		{
+			name: "above range",
+			n:    11,
+			min:  1,
+			max:  10,
+			want: 10,
+		},
+		{
+			name: "at bottom",
+			n:    1,
+			min:  1,
+			max:  10,
+			want: 1,
+		},
+		{
+			name: "at top",
+			n:    10,
+			min:  1,
+			max:  10,
+			want: 10,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ClampInt(tc.n, tc.min, tc.max)
+			if got != tc.want {
+				t.Fatalf("Clamp(%d, %d, %d) return incorrect value. got %d, want %d", tc.n, tc.min, tc.max, got, tc.want)
+			}
+		})
+	}
+}
 
 func sliceToHSVMat(sl [][][]uint8) gocv.Mat {
 	h := gocv.NewMatWithSize(len(sl), len(sl[0]), gocv.MatTypeCV8U)
@@ -753,6 +806,612 @@ func TestCombineMasks(t *testing.T) {
 			defer want.Close()
 			CombineMasks(tc.mode, top, bottom, &got)
 			compareMats(t, got, want)
+		})
+	}
+}
+
+func TestZoomCropRectangle(t *testing.T) {
+	cases := []struct {
+		name            string
+		zoomFactor      float64
+		anchorCoords    []int
+		videoDimensions []int
+		maxDimensions   []int
+		want            image.Rectangle
+	}{
+		// Zoom in - video width == display width
+		{
+			name:            "video width == display width, 0x0, 1x",
+			zoomFactor:      1.0,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 1000, 1000),
+		},
+		{
+			name:            "video width == display width, 0x0, 2x",
+			zoomFactor:      2.0,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 500, 500),
+		},
+		{
+			name:            "video width == display width, 0x0, 3x",
+			zoomFactor:      3.0,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 333, 333),
+		},
+		{
+			name:            "video width == display width, 1000x1000, 1x",
+			zoomFactor:      1.0,
+			anchorCoords:    []int{1000, 1000},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 1000, 1000),
+		},
+		{
+			name:            "video width == display width, 1000x1000, 2x",
+			zoomFactor:      2.0,
+			anchorCoords:    []int{1000, 1000},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(500, 500, 1000, 1000),
+		},
+		{
+			name:            "video width == display width, 1000x1000, 3x",
+			zoomFactor:      3.0,
+			anchorCoords:    []int{1000, 1000},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(667, 667, 1000, 1000),
+		},
+		{
+			name:            "video width == display width, 0x749, 1x",
+			zoomFactor:      1.0,
+			anchorCoords:    []int{0, 749},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 1000, 1000),
+		},
+		{
+			name:            "video width == display width, 0x749, 2x",
+			zoomFactor:      2.0,
+			anchorCoords:    []int{0, 749},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 499, 500, 999),
+		},
+		{
+			name:            "video width == display width, 0x749, 3x",
+			zoomFactor:      3.0,
+			anchorCoords:    []int{0, 749},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 583, 333, 916),
+		},
+		{
+			name:            "video width == display width, 749x0, 1x",
+			zoomFactor:      1.0,
+			anchorCoords:    []int{749, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 1000, 1000),
+		},
+		{
+			name:            "video width == display width, 749x0, 2x",
+			zoomFactor:      2.0,
+			anchorCoords:    []int{749, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(499, 0, 999, 500),
+		},
+		{
+			name:            "video width == display width, 749x0, 3x",
+			zoomFactor:      3.0,
+			anchorCoords:    []int{749, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(583, 0, 916, 333),
+		},
+		// Zoom in - video width > display width
+		{
+			name:            "video width > display width, 0x0, 1x",
+			zoomFactor:      1.0,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video width > display width, 0x0, 2x",
+			zoomFactor:      2.0,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(0, 0, 50, 50),
+		},
+		{
+			name:            "video width > display width, 0x0, 3x",
+			zoomFactor:      3.0,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(0, 0, 33, 33),
+		},
+		{
+			name:            "video width > display width, 1000x1000, 1x",
+			zoomFactor:      1.0,
+			anchorCoords:    []int{1000, 1000},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(900, 900, 1000, 1000),
+		},
+		{
+			name:            "video width > display width, 1000x1000, 2x",
+			zoomFactor:      2.0,
+			anchorCoords:    []int{1000, 1000},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(950, 950, 1000, 1000),
+		},
+		{
+			name:            "video width > display width, 1000x1000, 3x",
+			zoomFactor:      3.0,
+			anchorCoords:    []int{1000, 1000},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(967, 967, 1000, 1000),
+		},
+		{
+			name:            "video width > display width, 0x749, 1x",
+			zoomFactor:      1.0,
+			anchorCoords:    []int{0, 749},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(0, 699, 100, 799),
+		},
+		{
+			name:            "video width > display width, 0x749, 2x",
+			zoomFactor:      2.0,
+			anchorCoords:    []int{0, 749},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(0, 724, 50, 774),
+		},
+		{
+			name:            "video width > display width, 0x749, 3x",
+			zoomFactor:      3.0,
+			anchorCoords:    []int{0, 749},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(0, 733, 33, 766),
+		},
+		{
+			name:            "video width > display width, 749x0, 1x",
+			zoomFactor:      1.0,
+			anchorCoords:    []int{749, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(699, 0, 799, 100),
+		},
+		{
+			name:            "video width > display width, 749x0, 2x",
+			zoomFactor:      2.0,
+			anchorCoords:    []int{749, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(724, 0, 774, 50),
+		},
+		{
+			name:            "video width > display width, 749x0, 3x",
+			zoomFactor:      3.0,
+			anchorCoords:    []int{749, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(733, 0, 766, 33),
+		},
+		// Zoom in - video size < max size
+		{
+			name:            "video size < max size, 0x0, 1x",
+			zoomFactor:      1.0,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video size < max size, 0x0, 2x",
+			zoomFactor:      2.0,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video size < max size, 0x0, 3x",
+			zoomFactor:      3.0,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video size < max size, 0x0, 10x",
+			zoomFactor:      10.0,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video size < max size, 0x0, 20x",
+			zoomFactor:      20.0,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 50, 50),
+		},
+		{
+			name:            "video size < max size, 0x0, 30x",
+			zoomFactor:      30.0,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 33, 33),
+		},
+		{
+			name:            "video size < max size, 100x100, 1x",
+			zoomFactor:      1.0,
+			anchorCoords:    []int{100, 100},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video size < max size, 100x100, 2x",
+			zoomFactor:      2.0,
+			anchorCoords:    []int{100, 100},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video size < max size, 100x100, 3x",
+			zoomFactor:      3.0,
+			anchorCoords:    []int{100, 100},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video size < max size, 100x100, 10x",
+			zoomFactor:      10.0,
+			anchorCoords:    []int{100, 100},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video size < max size, 100x100, 20x",
+			zoomFactor:      20.0,
+			anchorCoords:    []int{100, 100},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(50, 50, 100, 100),
+		},
+		{
+			name:            "video size < max size, 100x100, 30x",
+			zoomFactor:      30.0,
+			anchorCoords:    []int{100, 100},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(67, 67, 100, 100),
+		},
+		{
+			name:            "video size < max size, 0x74, 1x",
+			zoomFactor:      1.0,
+			anchorCoords:    []int{0, 74},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video size < max size, 0x74, 2x",
+			zoomFactor:      2.0,
+			anchorCoords:    []int{0, 74},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video size < max size, 0x74, 3x",
+			zoomFactor:      3.0,
+			anchorCoords:    []int{0, 74},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video size < max size, 0x74, 10x",
+			zoomFactor:      10.0,
+			anchorCoords:    []int{0, 74},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video size < max size, 0x74, 20x",
+			zoomFactor:      20.0,
+			anchorCoords:    []int{0, 74},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 49, 50, 99),
+		},
+		{
+			name:            "video size < max size, 0x74, 30x",
+			zoomFactor:      30.0,
+			anchorCoords:    []int{0, 74},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 58, 33, 91),
+		},
+		{
+			name:            "video size < max size, 74x0, 1x",
+			zoomFactor:      1.0,
+			anchorCoords:    []int{74, 0},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video size < max size, 74x0, 2x",
+			zoomFactor:      2.0,
+			anchorCoords:    []int{74, 0},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video size < max size, 74x0, 3x",
+			zoomFactor:      3.0,
+			anchorCoords:    []int{74, 0},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video size < max size, 74x0, 10x",
+			zoomFactor:      10.0,
+			anchorCoords:    []int{74, 0},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video size < max size, 74x0, 20x",
+			zoomFactor:      20.0,
+			anchorCoords:    []int{74, 0},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(49, 0, 99, 50),
+		},
+		{
+			name:            "video size < max size, 74x0, 30x",
+			zoomFactor:      30.0,
+			anchorCoords:    []int{74, 0},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(58, 0, 91, 33),
+		},
+		// Zoom out - video width == display width
+		{
+			name:            "video width == display width, 0x0, .5x",
+			zoomFactor:      0.5,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 1000, 1000),
+		},
+		{
+			name:            "video width == display width, 0x0, .2x",
+			zoomFactor:      0.2,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 1000, 1000),
+		},
+		{
+			name:            "video width == display width, 0x0, .1x",
+			zoomFactor:      0.1,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 1000, 1000),
+		},
+		{
+			name:            "video width == display width, 1000x1000, .5x",
+			zoomFactor:      0.5,
+			anchorCoords:    []int{1000, 1000},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 1000, 1000),
+		},
+		{
+			name:            "video width == display width, 1000x1000, .2x",
+			zoomFactor:      0.2,
+			anchorCoords:    []int{1000, 1000},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 1000, 1000),
+		},
+		{
+			name:            "video width == display width, 1000x1000, .1x",
+			zoomFactor:      0.1,
+			anchorCoords:    []int{1000, 1000},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 1000, 1000),
+		},
+		// Zoom out - video width < display width
+		{
+			name:            "video width < display width, 0x0, .5x",
+			zoomFactor:      0.5,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video width < display width, 0x0, .2x",
+			zoomFactor:      0.2,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video width < display width, 0x0, .1x",
+			zoomFactor:      0.1,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video width < display width, 100x100, .5x",
+			zoomFactor:      0.5,
+			anchorCoords:    []int{100, 100},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video width < display width, 100x100, .2x",
+			zoomFactor:      0.2,
+			anchorCoords:    []int{100, 100},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		{
+			name:            "video width < display width, 100x100, .1x",
+			zoomFactor:      0.1,
+			anchorCoords:    []int{100, 100},
+			videoDimensions: []int{100, 100},
+			maxDimensions:   []int{1000, 1000},
+			want:            image.Rect(0, 0, 100, 100),
+		},
+		// Zoom out - video size > max size
+		{
+			name:            "video size > max size, 0x0, .5x",
+			zoomFactor:      0.5,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(0, 0, 200, 200),
+		},
+		{
+			name:            "video size > max size, 0x0, .2x",
+			zoomFactor:      0.2,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(0, 0, 500, 500),
+		},
+		{
+			name:            "video size > max size, 0x0, .1x",
+			zoomFactor:      0.1,
+			anchorCoords:    []int{0, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(0, 0, 1000, 1000),
+		},
+		{
+			name:            "video size > max size, 1000x1000, .5x",
+			zoomFactor:      0.5,
+			anchorCoords:    []int{1000, 1000},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(800, 800, 1000, 1000),
+		},
+		{
+			name:            "video size > max size, 1000x1000, .2x",
+			zoomFactor:      0.2,
+			anchorCoords:    []int{1000, 1000},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(500, 500, 1000, 1000),
+		},
+		{
+			name:            "video size > max size, 1000x1000, .1x",
+			zoomFactor:      0.1,
+			anchorCoords:    []int{1000, 1000},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(0, 0, 1000, 1000),
+		},
+		{
+			name:            "video size > max size, 0x749, .5x",
+			zoomFactor:      0.5,
+			anchorCoords:    []int{0, 749},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(0, 649, 200, 849),
+		},
+		{
+			name:            "video size > max size, 0x749, .2x",
+			zoomFactor:      0.2,
+			anchorCoords:    []int{0, 749},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(0, 499, 500, 999),
+		},
+		{
+			name:            "video size > max size, 0x749, .1x",
+			zoomFactor:      0.1,
+			anchorCoords:    []int{0, 749},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(0, 0, 1000, 1000),
+		},
+		{
+			name:            "video size > max size, 749x0, .5x",
+			zoomFactor:      0.5,
+			anchorCoords:    []int{749, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(649, 0, 849, 200),
+		},
+		{
+			name:            "video size > max size, 749x0, .2x",
+			zoomFactor:      0.2,
+			anchorCoords:    []int{749, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(499, 0, 999, 500),
+		},
+		{
+			name:            "video size > max size, 749x0, .1x",
+			zoomFactor:      0.1,
+			anchorCoords:    []int{749, 0},
+			videoDimensions: []int{1000, 1000},
+			maxDimensions:   []int{100, 100},
+			want:            image.Rect(0, 0, 1000, 1000),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			anchorX, anchorY := tc.anchorCoords[0], tc.anchorCoords[1]
+			videoWidth, videoHeight := tc.videoDimensions[0], tc.videoDimensions[1]
+			maxWidth, maxHeight := tc.maxDimensions[0], tc.maxDimensions[1]
+			got := ZoomCropRectangle(tc.zoomFactor, anchorX, anchorY, videoWidth, videoHeight, maxWidth, maxHeight)
+			if got != tc.want {
+				t.Fatalf("ZoomCropRectangle(%s) return unexpected result. got %v, want %v", tc.name, got, tc.want)
+			}
 		})
 	}
 }
