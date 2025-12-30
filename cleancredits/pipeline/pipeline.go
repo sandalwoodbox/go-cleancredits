@@ -39,7 +39,7 @@ type Pipeline struct {
 
 func NewPipeline(vc *gocv.VideoCapture) Pipeline {
 	w := int(vc.Get(gocv.VideoCaptureFrameWidth))
-	h := int(vc.Get(gocv.VideoCaptureFrameWidth))
+	h := int(vc.Get(gocv.VideoCaptureFrameHeight))
 	return Pipeline{
 		VideoCapture:      vc,
 		VideoWidth:        w,
@@ -55,17 +55,16 @@ func NewPipeline(vc *gocv.VideoCapture) Pipeline {
 	}
 }
 
-func (p Pipeline) UpdateMask(ms mask.Settings, drawSettings draw.Settings) {
+func (p Pipeline) UpdateMask(ms mask.Settings, drawSettings draw.Settings) error {
 	if ms.Frame != p.MaskSettings.Frame {
 		mat := gocv.NewMat()
 		defer mat.Close()
 		err := LoadFrame(p.VideoCapture, ms.Frame, &mat)
 		if err != nil {
-			fmt.Printf("Error loading frame %d/%s: %v\n",
+			return fmt.Errorf("loading frame %d/%s: %v\n",
 				ms.Frame,
 				strconv.FormatFloat(p.VideoCapture.Get(gocv.VideoCaptureFrameCount), 'f', -1, 64),
 				err)
-			return
 		}
 		p.MaskFrame = mat
 		p.MaskSettings.Frame = ms.Frame
@@ -84,9 +83,10 @@ func (p Pipeline) UpdateMask(ms mask.Settings, drawSettings draw.Settings) {
 
 	// TODO: Take overrides (drawn) into account
 	p.MaskWithOverrides = p.MaskWithInput.Clone()
+	return nil
 }
 
-func (p Pipeline) ApplyMask(frame int, ds display.Settings, dst *gocv.Mat) {
+func (p Pipeline) ApplyMask(frame int, ds display.Settings, dst *gocv.Mat) error {
 	frameChanged := frame != p.DisplayFrameNumber || p.DisplayFrame.Empty()
 	if frameChanged {
 		LoadFrame(p.VideoCapture, frame, &p.DisplayFrame)
@@ -115,9 +115,15 @@ func (p Pipeline) ApplyMask(frame int, ds display.Settings, dst *gocv.Mat) {
 	if zoomChanged {
 		zf := display.ZoomLevelMap[ds.Zoom]
 		r := ZoomCropRectangle(zf, ds.AnchorX, ds.AnchorY, p.VideoWidth, p.VideoHeight, 720, 480)
+		fmt.Printf("Zoomed rectangle: %v\n", r)
+		fmt.Printf("Display cols: %d rows: %d\n", p.Display.Cols(), p.Display.Rows())
+		if r.Min.X < 0 || r.Size().X < 0 || r.Min.X+r.Size().X > p.Display.Cols() || r.Min.Y < 0 || r.Size().Y < 0 || r.Min.Y+r.Size().Y > p.Display.Rows() {
+			return fmt.Errorf("Zoomed rectangle out of bounds: %v\n", r)
+		}
 		gocv.Resize(p.Display.Region(r), &p.Zoomed, image.Point{}, zf, zf, gocv.InterpolationNearestNeighbor)
 	}
 	p.DisplaySettings = ds
+	return nil
 }
 
 func (p Pipeline) maskSettingsChanged(ms mask.Settings) bool {

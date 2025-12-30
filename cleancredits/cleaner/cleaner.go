@@ -119,10 +119,14 @@ func (c Cleaner) UpdatePipeline() {
 		return
 	}
 
-	c.Pipeline.UpdateMask(
+	err = c.Pipeline.UpdateMask(
 		maskSettings,
 		drawSettings,
 	)
+	if err != nil {
+		fmt.Println("Error updating mask: ", err)
+		return
+	}
 	fNum := maskSettings.Frame
 	switch tabName {
 	case "Draw":
@@ -130,10 +134,15 @@ func (c Cleaner) UpdatePipeline() {
 	}
 	m := gocv.NewMat()
 	defer m.Close()
-	c.Pipeline.ApplyMask(fNum, displaySettings, &m)
+	err = c.Pipeline.ApplyMask(fNum, displaySettings, &m)
+	if err != nil {
+		fmt.Println("Error applying mask: ", err)
+		return
+	}
 	img, err := m.ToImage()
 	if err != nil {
-		fmt.Println("error applying mask: ", err)
+		fmt.Println("error converting to image: ", err)
+		return
 	}
 
 	c.Preview.SetImage(img)
