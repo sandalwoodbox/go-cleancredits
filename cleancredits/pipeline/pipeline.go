@@ -56,9 +56,14 @@ func NewPipeline(vc *gocv.VideoCapture) Pipeline {
 }
 
 func (p Pipeline) UpdateMask(ms mask.Settings, drawSettings draw.Settings) error {
-	if ms.Frame != p.MaskSettings.Frame {
+	if p.MaskFrame.Closed() {
+		return fmt.Errorf("MaskFrame is closed")
+	}
+	maskFrameChanged := ms.Frame != p.MaskSettings.Frame || p.MaskFrame.Empty()
+	fmt.Printf("maskFrameChanged: %t, %t\n", ms.Frame != p.MaskSettings.Frame, p.MaskFrame.Empty())
+	if maskFrameChanged {
+		p.MaskFrame.Close()
 		mat := gocv.NewMat()
-		defer mat.Close()
 		err := LoadFrame(p.VideoCapture, ms.Frame, &mat)
 		if err != nil {
 			return fmt.Errorf("loading frame %d/%s: %v\n",
@@ -66,11 +71,18 @@ func (p Pipeline) UpdateMask(ms mask.Settings, drawSettings draw.Settings) error
 				strconv.FormatFloat(p.VideoCapture.Get(gocv.VideoCaptureFrameCount), 'f', -1, 64),
 				err)
 		}
+		fmt.Printf("Loaded mask frame: cols %d, rows %d, empty %t\n", mat.Cols(), mat.Rows(), mat.Empty())
 		p.MaskFrame = mat
 		p.MaskSettings.Frame = ms.Frame
 	}
 
-	if p.maskSettingsChanged(ms) {
+	if p.Mask.Closed() {
+		return fmt.Errorf("Mask is closed")
+	}
+	maskSettingsChanged := maskFrameChanged || p.maskSettingsChanged(ms) || p.Mask.Empty()
+	fmt.Printf("maskSettingsChanged: %t, %t, %t\n", maskFrameChanged, p.maskSettingsChanged(ms), p.Mask.Empty())
+	fmt.Printf("Old: %v\nNew: %v\n", p.MaskSettings, ms)
+	if maskSettingsChanged {
 		p.Mask.Close()
 		p.Mask = gocv.NewMat()
 		RenderMask(p.MaskFrame, &p.Mask, ms)
@@ -78,22 +90,40 @@ func (p Pipeline) UpdateMask(ms mask.Settings, drawSettings draw.Settings) error
 		p.MaskChanged = true
 	}
 
+	if p.MaskWithInput.Closed() {
+		return fmt.Errorf("MaskWithInput is closed")
+	}
+	p.MaskWithInput.Close()
 	// TODO: Take layers into account
-	p.MaskWithInput = p.Mask.Clone()
+	p.MaskWithInput = gocv.NewMat()
+	p.Mask.CopyTo(&p.MaskWithInput)
 
+	if p.MaskWithOverrides.Closed() {
+		return fmt.Errorf("MaskWithOverrides is closed")
+	}
+	p.MaskWithOverrides.Close()
 	// TODO: Take overrides (drawn) into account
-	p.MaskWithOverrides = p.MaskWithInput.Clone()
+	p.MaskWithOverrides = gocv.NewMat()
+	p.MaskWithInput.CopyTo(&p.MaskWithOverrides)
 	return nil
 }
 
 func (p Pipeline) ApplyMask(frame int, ds display.Settings, dst *gocv.Mat) error {
+	if p.DisplayFrame.Closed() {
+		return fmt.Errorf("DisplayFrame is closed")
+	}
 	frameChanged := frame != p.DisplayFrameNumber || p.DisplayFrame.Empty()
+	fmt.Printf("frameChanged: %t, %t\n", frame != p.DisplayFrameNumber, p.DisplayFrame.Empty())
 	if frameChanged {
 		LoadFrame(p.VideoCapture, frame, &p.DisplayFrame)
 		p.DisplayFrameNumber = frame
 	}
 
-	modeChanged := frameChanged || p.DisplaySettings.Mode != ds.Mode || p.MaskChanged
+	if p.Display.Closed() {
+		return fmt.Errorf("Display is closed")
+	}
+	modeChanged := frameChanged || p.DisplaySettings.Mode != ds.Mode || p.MaskChanged || p.Display.Empty()
+	fmt.Printf("modeChanged: %t, %t, %t, %t\n", frameChanged, p.DisplaySettings.Mode != ds.Mode, p.MaskChanged, p.Display.Empty())
 	if modeChanged {
 		switch ds.Mode {
 		case display.ViewOriginal:
@@ -109,9 +139,14 @@ func (p Pipeline) ApplyMask(frame int, ds display.Settings, dst *gocv.Mat) error
 			// TODO: allow setting inpaint radius
 			gocv.Inpaint(p.Display, p.MaskWithOverrides, &p.Display, 3, gocv.Telea)
 		}
+		p.MaskChanged = false
 	}
 
-	zoomChanged := modeChanged || p.zoomChanged(ds)
+	if p.Zoomed.Closed() {
+		return fmt.Errorf("Zoomed is closed")
+	}
+	zoomChanged := modeChanged || p.zoomChanged(ds) || p.Zoomed.Empty()
+	fmt.Printf("zoomChanged: %t, %t, %t\n", modeChanged, p.zoomChanged(ds), p.Zoomed.Empty())
 	if zoomChanged {
 		zf := display.ZoomLevelMap[ds.Zoom]
 		r := ZoomCropRectangle(zf, ds.AnchorX, ds.AnchorY, p.VideoWidth, p.VideoHeight, 720, 480)
