@@ -132,16 +132,9 @@ func (c Cleaner) UpdatePipeline() {
 	case "Draw":
 		fNum = drawSettings.Frame
 	}
-	m := gocv.NewMat()
-	defer m.Close()
-	err = c.Pipeline.ApplyMask(fNum, displaySettings, &m)
+	img, err := c.Pipeline.ApplyMask(fNum, displaySettings)
 	if err != nil {
 		fmt.Println("Error applying mask: ", err)
-		return
-	}
-	img, err := m.ToImage()
-	if err != nil {
-		fmt.Println("error converting to image: ", err)
 		return
 	}
 

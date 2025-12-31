@@ -18,14 +18,14 @@ type Pipeline struct {
 	VideoHeight  int
 
 	// Cached images
-	DisplayFrame      gocv.Mat
-	MaskFrame         gocv.Mat
-	Mask              gocv.Mat
-	MaskWithInput     gocv.Mat
-	MaskWithOverrides gocv.Mat
-	Inpainted         gocv.Mat
-	Display           gocv.Mat
-	Zoomed            gocv.Mat
+	DisplayFrame      *image.Image
+	MaskFrame         *image.Image
+	Mask              *image.Image
+	MaskWithInput     *image.Image
+	MaskWithOverrides *image.Image
+	Inpainted         *image.Image
+	Display           *image.Image
+	Zoomed            *image.Image
 
 	// Last rendered settings
 	DisplayFrameNumber int
@@ -41,124 +41,169 @@ func NewPipeline(vc *gocv.VideoCapture) Pipeline {
 	w := int(vc.Get(gocv.VideoCaptureFrameWidth))
 	h := int(vc.Get(gocv.VideoCaptureFrameHeight))
 	return Pipeline{
-		VideoCapture:      vc,
-		VideoWidth:        w,
-		VideoHeight:       h,
-		DisplayFrame:      gocv.NewMat(),
-		MaskFrame:         gocv.NewMat(),
-		Mask:              gocv.NewMat(),
-		MaskWithInput:     gocv.NewMat(),
-		MaskWithOverrides: gocv.NewMat(),
-		Inpainted:         gocv.NewMat(),
-		Display:           gocv.NewMat(),
-		Zoomed:            gocv.NewMat(),
+		VideoCapture: vc,
+		VideoWidth:   w,
+		VideoHeight:  h,
 	}
 }
 
-func (p Pipeline) UpdateMask(ms mask.Settings, drawSettings draw.Settings) error {
-	if p.MaskFrame.Closed() {
-		return fmt.Errorf("MaskFrame is closed")
-	}
-	maskFrameChanged := ms.Frame != p.MaskSettings.Frame || p.MaskFrame.Empty()
-	fmt.Printf("maskFrameChanged: %t, %t\n", ms.Frame != p.MaskSettings.Frame, p.MaskFrame.Empty())
+func (p *Pipeline) UpdateMask(ms mask.Settings, drawSettings draw.Settings) error {
+	maskFrameChanged := ms.Frame != p.MaskSettings.Frame || p.MaskFrame == nil
+
+	fmt.Printf("maskFrameChanged: %t, %t\n", ms.Frame != p.MaskSettings.Frame, p.MaskFrame == nil)
+	var maskFrameMat gocv.Mat
+	defer maskFrameMat.Close()
+	var err error
 	if maskFrameChanged {
-		p.MaskFrame.Close()
-		mat := gocv.NewMat()
-		err := LoadFrame(p.VideoCapture, ms.Frame, &mat)
+		maskFrameMat = gocv.NewMat()
+		err := LoadFrame(p.VideoCapture, ms.Frame, &maskFrameMat)
 		if err != nil {
 			return fmt.Errorf("loading frame %d/%s: %v\n",
 				ms.Frame,
 				strconv.FormatFloat(p.VideoCapture.Get(gocv.VideoCaptureFrameCount), 'f', -1, 64),
 				err)
 		}
-		fmt.Printf("Loaded mask frame: cols %d, rows %d, empty %t\n", mat.Cols(), mat.Rows(), mat.Empty())
-		p.MaskFrame = mat
+		fmt.Printf("Loaded mask frame: cols %d, rows %d, empty %t\n", maskFrameMat.Cols(), maskFrameMat.Rows(), maskFrameMat.Empty())
+		i, err := maskFrameMat.ToImage()
+		if err != nil {
+			return fmt.Errorf("converting maskFrame to image: %v", err)
+		}
+		p.MaskFrame = &i
 		p.MaskSettings.Frame = ms.Frame
+	} else {
+		maskFrameMat, err = gocv.ImageToMatRGB(*p.MaskFrame)
+		if err != nil {
+			return fmt.Errorf("converting p.MaskFrame to mat: %v", err)
+		}
 	}
 
-	if p.Mask.Closed() {
-		return fmt.Errorf("Mask is closed")
-	}
-	maskSettingsChanged := maskFrameChanged || p.maskSettingsChanged(ms) || p.Mask.Empty()
-	fmt.Printf("maskSettingsChanged: %t, %t, %t\n", maskFrameChanged, p.maskSettingsChanged(ms), p.Mask.Empty())
+	maskSettingsChanged := maskFrameChanged || p.maskSettingsChanged(ms) || p.Mask == nil
+	fmt.Printf("maskSettingsChanged: %t, %t, %t\n", maskFrameChanged, p.maskSettingsChanged(ms), p.Mask == nil)
 	fmt.Printf("Old: %v\nNew: %v\n", p.MaskSettings, ms)
+	var maskMat gocv.Mat
+	defer maskMat.Close()
 	if maskSettingsChanged {
-		p.Mask.Close()
-		p.Mask = gocv.NewMat()
-		RenderMask(p.MaskFrame, &p.Mask, ms)
+		maskMat = gocv.NewMat()
+		RenderMask(maskFrameMat, &maskMat, ms)
+		i, err := maskMat.ToImage()
+		if err != nil {
+			return fmt.Errorf("converting mask to image: %v", err)
+		}
+		p.Mask = &i
 		p.MaskSettings = ms
 		p.MaskChanged = true
+	} else {
+		maskMat, err = ImageToMatGray(*p.Mask)
+		if err != nil {
+			return fmt.Errorf("converting p.Mask to mat: %v", err)
+		}
 	}
 
-	if p.MaskWithInput.Closed() {
-		return fmt.Errorf("MaskWithInput is closed")
-	}
-	p.MaskWithInput.Close()
 	// TODO: Take layers into account
-	p.MaskWithInput = gocv.NewMat()
-	p.Mask.CopyTo(&p.MaskWithInput)
+	p.MaskWithInput = p.Mask
 
-	if p.MaskWithOverrides.Closed() {
-		return fmt.Errorf("MaskWithOverrides is closed")
-	}
-	p.MaskWithOverrides.Close()
 	// TODO: Take overrides (drawn) into account
-	p.MaskWithOverrides = gocv.NewMat()
-	p.MaskWithInput.CopyTo(&p.MaskWithOverrides)
+	p.MaskWithOverrides = p.MaskWithInput
 	return nil
 }
 
-func (p Pipeline) ApplyMask(frame int, ds display.Settings, dst *gocv.Mat) error {
-	if p.DisplayFrame.Closed() {
-		return fmt.Errorf("DisplayFrame is closed")
-	}
-	frameChanged := frame != p.DisplayFrameNumber || p.DisplayFrame.Empty()
-	fmt.Printf("frameChanged: %t, %t\n", frame != p.DisplayFrameNumber, p.DisplayFrame.Empty())
+func (p *Pipeline) ApplyMask(frame int, ds display.Settings) (image.Image, error) {
+	frameChanged := frame != p.DisplayFrameNumber || p.DisplayFrame == nil
+	fmt.Printf("frameChanged: %t, %t\n", frame != p.DisplayFrameNumber, p.DisplayFrame == nil)
+	var displayFrameMat gocv.Mat
+	defer displayFrameMat.Close()
+	var err error
 	if frameChanged {
-		LoadFrame(p.VideoCapture, frame, &p.DisplayFrame)
+		displayFrameMat = gocv.NewMat()
+		err = LoadFrame(p.VideoCapture, frame, &displayFrameMat)
+		if err != nil {
+			return nil, fmt.Errorf("loading frame: %v", err)
+		}
+		i, err := displayFrameMat.ToImage()
+		if err != nil {
+			return nil, fmt.Errorf("converting displayFrame to image: %v", err)
+		}
+		p.DisplayFrame = &i
 		p.DisplayFrameNumber = frame
+	} else {
+		displayFrameMat, err = gocv.ImageToMatRGB(*p.DisplayFrame)
+		if err != nil {
+			return nil, fmt.Errorf("converting p.DisplayFrame to mat: %v", err)
+		}
 	}
 
-	if p.Display.Closed() {
-		return fmt.Errorf("Display is closed")
-	}
-	modeChanged := frameChanged || p.DisplaySettings.Mode != ds.Mode || p.MaskChanged || p.Display.Empty()
-	fmt.Printf("modeChanged: %t, %t, %t, %t\n", frameChanged, p.DisplaySettings.Mode != ds.Mode, p.MaskChanged, p.Display.Empty())
+	modeChanged := frameChanged || p.DisplaySettings.Mode != ds.Mode || p.MaskChanged || p.Display == nil
+	fmt.Printf("modeChanged: %t, %t, %t, %t\n", frameChanged, p.DisplaySettings.Mode != ds.Mode, p.MaskChanged, p.Display == nil)
+	var displayMat gocv.Mat
+	defer displayMat.Close()
 	if modeChanged {
+		displayMat = gocv.NewMat()
 		switch ds.Mode {
 		case display.ViewOriginal:
-			gocv.CvtColor(p.DisplayFrame, &p.Display, gocv.ColorBGRToRGBA)
+			gocv.CvtColor(displayFrameMat, &displayMat, gocv.ColorBGRToRGBA)
 		case display.ViewMask:
-			gocv.BitwiseAnd(p.DisplayFrame, p.MaskWithOverrides, &p.Display)
-			gocv.CvtColor(p.Display, &p.Display, gocv.ColorBGRToRGBA)
+			m, err := ImageToMatGray(*p.MaskWithOverrides)
+			defer m.Close()
+			if err != nil {
+				return nil, fmt.Errorf("converting p.MaskWithOverrides to mat: %v", err)
+			}
+			fmt.Printf("displayFrameMat continuous: %t\n", displayFrameMat.IsContinuous())
+			fmt.Printf("m continuous: %t\n", m.IsContinuous())
+			gocv.BitwiseAndWithMask(displayFrameMat, displayFrameMat, &displayMat, m)
+			fmt.Printf("displayMat size: %dx%d\n", displayMat.Cols(), displayMat.Rows())
+			fmt.Printf("displayMat continuous: %t\n", displayMat.IsContinuous())
+			gocv.CvtColor(displayMat, &displayMat, gocv.ColorBGRToRGBA)
+			fmt.Printf("displayMat continuous: %t\n", displayMat.IsContinuous())
 		case display.ViewDraw:
 			// TODO: Display draw layer
-			gocv.CvtColor(p.DisplayFrame, &p.Display, gocv.ColorBGRToRGBA)
+			gocv.CvtColor(displayFrameMat, &displayMat, gocv.ColorBGRToRGBA)
 		default: // display.ViewPreview
-			gocv.CvtColor(p.DisplayFrame, &p.Display, gocv.ColorBGRToRGB)
+			m, err := ImageToMatGray(*p.MaskWithOverrides)
+			defer m.Close()
+			if err != nil {
+				return nil, fmt.Errorf("converting p.MaskWithOverrides to mat: %v", err)
+			}
+			gocv.CvtColor(displayFrameMat, &displayMat, gocv.ColorBGRToRGB)
 			// TODO: allow setting inpaint radius
-			gocv.Inpaint(p.Display, p.MaskWithOverrides, &p.Display, 3, gocv.Telea)
+			gocv.Inpaint(displayMat, m, &displayMat, 3, gocv.Telea)
 		}
+		i, err := displayMat.ToImage()
+		if err != nil {
+			return nil, fmt.Errorf("converting display to image: %v", err)
+		}
+		p.Display = &i
 		p.MaskChanged = false
+	} else {
+		displayMat, err = gocv.ImageToMatRGB(*p.Display)
+		if err != nil {
+			return nil, fmt.Errorf("converting p.Display to mat: %v", err)
+		}
 	}
 
-	if p.Zoomed.Closed() {
-		return fmt.Errorf("Zoomed is closed")
-	}
-	zoomChanged := modeChanged || p.zoomChanged(ds) || p.Zoomed.Empty()
-	fmt.Printf("zoomChanged: %t, %t, %t\n", modeChanged, p.zoomChanged(ds), p.Zoomed.Empty())
+	zoomChanged := modeChanged || p.zoomChanged(ds) || p.Zoomed == nil
+	fmt.Printf("zoomChanged: %t, %t, %t\n", modeChanged, p.zoomChanged(ds), p.Zoomed == nil)
+	var zoomed image.Image
 	if zoomChanged {
 		zf := display.ZoomLevelMap[ds.Zoom]
-		r := ZoomCropRectangle(zf, ds.AnchorX, ds.AnchorY, p.VideoWidth, p.VideoHeight, 720, 480)
+		displayWidth := 720
+		displayHeight := 480
+		r := ZoomCropRectangle(zf, ds.AnchorX, ds.AnchorY, p.VideoWidth, p.VideoHeight, displayWidth, displayHeight)
 		fmt.Printf("Zoomed rectangle: %v\n", r)
-		fmt.Printf("Display cols: %d rows: %d\n", p.Display.Cols(), p.Display.Rows())
-		if r.Min.X < 0 || r.Size().X < 0 || r.Min.X+r.Size().X > p.Display.Cols() || r.Min.Y < 0 || r.Size().Y < 0 || r.Min.Y+r.Size().Y > p.Display.Rows() {
-			return fmt.Errorf("Zoomed rectangle out of bounds: %v\n", r)
+		if r.Min.X < 0 || r.Size().X < 0 || r.Min.X+r.Size().X > displayWidth || r.Min.Y < 0 || r.Size().Y < 0 || r.Min.Y+r.Size().Y > displayHeight {
+			return nil, fmt.Errorf("Zoomed rectangle out of bounds: %v\n", r)
 		}
-		gocv.Resize(p.Display.Region(r), &p.Zoomed, image.Point{}, zf, zf, gocv.InterpolationNearestNeighbor)
+		m := gocv.NewMatWithSize(displayHeight, displayWidth, gocv.MatTypeCV8UC3)
+		gocv.Resize(displayMat.Region(r), &m, image.Point{}, zf, zf, gocv.InterpolationNearestNeighbor)
+		zoomed, err = m.ToImage()
+		if err != nil {
+			return nil, fmt.Errorf("converting display to image: %v", err)
+		}
+		p.Zoomed = &zoomed
+	} else {
+		zoomed = *p.Zoomed
 	}
 	p.DisplaySettings = ds
-	return nil
+	return zoomed, nil
 }
 
 func (p Pipeline) maskSettingsChanged(ms mask.Settings) bool {

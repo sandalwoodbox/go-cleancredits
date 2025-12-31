@@ -144,3 +144,17 @@ func ZoomCropRectangle(zoomFactor float64, anchorX, anchorY, videoWidth, videoHe
 	)
 	return image.Rect(cropX, cropY, cropX+zoomWidth, cropY+zoomHeight)
 }
+
+func ImageToMatGray(i image.Image) (gocv.Mat, error) {
+	mRGB, err := gocv.ImageToMatRGB(i)
+	defer mRGB.Close()
+	if err != nil {
+		return gocv.NewMat(), fmt.Errorf("converting p.Mask to mat: %v", err)
+	}
+	mGray := gocv.NewMat()
+	err = gocv.CvtColor(mRGB, &mGray, gocv.ColorBGRToGray)
+	if err != nil {
+		return gocv.NewMat(), fmt.Errorf("converting maskMat to gray: %v", err)
+	}
+	return mGray, nil
+}
