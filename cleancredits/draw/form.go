@@ -37,10 +37,13 @@ func NewForm(frameCount int) Form {
 		fmt.Println("Error setting draw mode: ", err)
 	}
 	f.Container = container.New(
-		layout.NewGridLayout(3),
-		widget.NewLabel("Frame"), ccWidget.NewIntSliderWithData(0, frameCount-1, f.Frame), ccWidget.NewIntEntryWithData(f.Frame),
-		widget.NewLabel("Mode"), widget.NewSelectWithData([]string{Include, Exclude}, f.Mode), widget.NewLabel(""),
-		widget.NewLabel("Size"), ccWidget.NewIntSliderWithData(0, 100, f.Size), ccWidget.NewIntEntryWithData(f.Size),
+		layout.NewVBoxLayout(),
+		container.New(
+			layout.NewGridLayout(3),
+			widget.NewLabel("Frame"), ccWidget.NewIntSliderWithData(0, frameCount-1, f.Frame), ccWidget.NewIntEntryWithData(f.Frame),
+			widget.NewLabel("Mode"), widget.NewSelectWithData([]string{Include, Exclude}, f.Mode), widget.NewLabel(""),
+			widget.NewLabel("Size"), ccWidget.NewIntSliderWithData(0, 100, f.Size), ccWidget.NewIntEntryWithData(f.Size),
+		),
 	)
 	return f
 }

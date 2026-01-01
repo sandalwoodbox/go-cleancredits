@@ -87,23 +87,26 @@ func NewForm(frameCount, videoWidth, videoHeight int) Form {
 		fmt.Println("Error setting CropBottom: ", err)
 	}
 	f.Container = container.New(
-		layout.NewGridLayout(3),
-		widget.NewLabel("Frame"), ccWidget.NewIntSliderWithData(0, frameCount-1, f.Frame), ccWidget.NewIntEntryWithData(f.Frame),
+		layout.NewVBoxLayout(),
+		container.New(
+			layout.NewGridLayout(3),
+			widget.NewLabel("Frame"), ccWidget.NewIntSliderWithData(0, frameCount-1, f.Frame), ccWidget.NewIntEntryWithData(f.Frame),
 
-		widget.NewLabel("Hue / Saturation / Value"), widget.NewLabel(""), widget.NewLabel(""),
-		widget.NewLabel("Hue Min"), ccWidget.NewIntSliderWithData(0, HueMax, f.HueMin), widget.NewLabel(""),
-		widget.NewLabel("Hue Max"), ccWidget.NewIntSliderWithData(0, HueMax, f.HueMax), widget.NewLabel(""),
-		widget.NewLabel("Sat Min"), ccWidget.NewIntSliderWithData(0, SatMax, f.SatMin), widget.NewLabel(""),
-		widget.NewLabel("Sat Max"), ccWidget.NewIntSliderWithData(0, SatMax, f.SatMax), widget.NewLabel(""),
-		widget.NewLabel("Val Min"), ccWidget.NewIntSliderWithData(0, ValMax, f.ValMin), widget.NewLabel(""),
-		widget.NewLabel("Val Max"), ccWidget.NewIntSliderWithData(0, ValMax, f.ValMax), widget.NewLabel(""),
-		widget.NewLabel("Grow"), ccWidget.NewIntSliderWithData(0, 20, f.Grow), widget.NewLabel(""),
+			widget.NewLabel("Hue / Saturation / Value"), widget.NewLabel(""), widget.NewLabel(""),
+			widget.NewLabel("Hue Min"), ccWidget.NewIntSliderWithData(0, HueMax, f.HueMin), widget.NewLabel(""),
+			widget.NewLabel("Hue Max"), ccWidget.NewIntSliderWithData(0, HueMax, f.HueMax), widget.NewLabel(""),
+			widget.NewLabel("Sat Min"), ccWidget.NewIntSliderWithData(0, SatMax, f.SatMin), widget.NewLabel(""),
+			widget.NewLabel("Sat Max"), ccWidget.NewIntSliderWithData(0, SatMax, f.SatMax), widget.NewLabel(""),
+			widget.NewLabel("Val Min"), ccWidget.NewIntSliderWithData(0, ValMax, f.ValMin), widget.NewLabel(""),
+			widget.NewLabel("Val Max"), ccWidget.NewIntSliderWithData(0, ValMax, f.ValMax), widget.NewLabel(""),
+			widget.NewLabel("Grow"), ccWidget.NewIntSliderWithData(0, 20, f.Grow), widget.NewLabel(""),
 
-		widget.NewLabel("Crop"), widget.NewLabel(""), widget.NewLabel(""),
-		widget.NewLabel("Left"), ccWidget.NewIntSliderWithData(0, videoWidth, f.CropLeft), widget.NewLabel(""),
-		widget.NewLabel("Top"), ccWidget.NewIntSliderWithData(0, videoHeight, f.CropTop), widget.NewLabel(""),
-		widget.NewLabel("Right"), ccWidget.NewIntSliderWithData(0, videoWidth, f.CropRight), widget.NewLabel(""),
-		widget.NewLabel("Bottom"), ccWidget.NewIntSliderWithData(0, videoHeight, f.CropBottom), widget.NewLabel(""),
+			widget.NewLabel("Crop"), widget.NewLabel(""), widget.NewLabel(""),
+			widget.NewLabel("Left"), ccWidget.NewIntSliderWithData(0, videoWidth, f.CropLeft), widget.NewLabel(""),
+			widget.NewLabel("Top"), ccWidget.NewIntSliderWithData(0, videoHeight, f.CropTop), widget.NewLabel(""),
+			widget.NewLabel("Right"), ccWidget.NewIntSliderWithData(0, videoWidth, f.CropRight), widget.NewLabel(""),
+			widget.NewLabel("Bottom"), ccWidget.NewIntSliderWithData(0, videoHeight, f.CropBottom), widget.NewLabel(""),
+		),
 	)
 	return f
 }
