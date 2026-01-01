@@ -13,6 +13,7 @@ import (
 
 	"github.com/sandalwoodbox/go-cleancredits/cleancredits/mask"
 	"github.com/sandalwoodbox/go-cleancredits/cleancredits/settings"
+	"github.com/sandalwoodbox/go-cleancredits/cleancredits/utils"
 )
 
 func TestClampInt(t *testing.T) {
@@ -59,7 +60,7 @@ func TestClampInt(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := ClampInt(tc.n, tc.min, tc.max)
+			got := utils.ClampInt(tc.n, tc.min, tc.max)
 			if got != tc.want {
 				t.Fatalf("Clamp(%d, %d, %d) return incorrect value. got %d, want %d", tc.n, tc.min, tc.max, got, tc.want)
 			}

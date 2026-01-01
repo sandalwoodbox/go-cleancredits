@@ -1,6 +1,9 @@
 package widget
 
 import (
+	"math"
+
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 )
@@ -28,4 +31,8 @@ func NewIntSliderWithData(min, max int, data binding.Int) *IntSlider {
 	s.Bind(binding.IntToFloat(data))
 
 	return s
+}
+
+func (e *IntSlider) Scrolled(event *fyne.ScrollEvent) {
+	e.SetValue(math.Min(math.Max(e.Value+float64(event.Scrolled.DY), e.Min), e.Max))
 }

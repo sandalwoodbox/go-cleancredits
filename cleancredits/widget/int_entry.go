@@ -7,6 +7,8 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
+
+	"github.com/sandalwoodbox/go-cleancredits/cleancredits/utils"
 )
 
 type IntEntry struct {
@@ -20,6 +22,7 @@ func NewIntEntry(min, max int) *IntEntry {
 		Max: max,
 	}
 	entry.ExtendBaseWidget(entry)
+	entry.Scroll = fyne.ScrollNone
 	return entry
 }
 
@@ -48,6 +51,14 @@ func (e *IntEntry) TypedShortcut(shortcut fyne.Shortcut) {
 	if _, err := strconv.Atoi(content); err == nil {
 		e.Entry.TypedShortcut(shortcut)
 	}
+}
+
+func (e *IntEntry) Scrolled(event *fyne.ScrollEvent) {
+	val, err := strconv.Atoi(e.Text)
+	if err != nil {
+		fmt.Println("Error parsing text to int: ", err)
+	}
+	e.SetText(strconv.Itoa(utils.ClampInt(val+int(event.Scrolled.DY), e.Min, e.Max)))
 }
 
 func (e *IntEntry) TypedKey(key *fyne.KeyEvent) {
