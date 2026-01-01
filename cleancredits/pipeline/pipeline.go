@@ -157,7 +157,8 @@ func (p *Pipeline) ApplyMask(frame int, ds settings.Display, rs settings.Render)
 			if err != nil {
 				return nil, fmt.Errorf("converting p.MaskWithOverrides to mat: %v", err)
 			}
-			gocv.Inpaint(displayFrameMat, m, &displayMat, float32(p.RenderSettings.InpaintRadius), gocv.Telea)
+			gocv.Inpaint(displayFrameMat, m, &displayMat, float32(rs.InpaintRadius), gocv.Telea)
+			p.RenderSettings = rs
 		}
 		i, err := displayMat.ToImage()
 		if err != nil {
