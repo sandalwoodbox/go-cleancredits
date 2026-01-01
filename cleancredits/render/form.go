@@ -102,9 +102,11 @@ func (f *Form) ShowRenderSave() {
 			fmt.Println("No file selected")
 			return
 		}
-		fyne.Do(func() {
-			f.Render(writer.URI().Path())
-		})
+		path := writer.URI().Path()
+		writer.Close()
+		go func() {
+			f.Render(path)
+		}()
 	}, f.Window)
 }
 
@@ -130,36 +132,52 @@ func (f *Form) Render(path string) {
 	mask, err := pipeline.ImageToMatGray(*f.Pipeline.MaskWithOverrides)
 	if err != nil {
 		mask.Close()
-		f.ProgressLabel.SetText(fmt.Sprintf("converting MaskWithOverrides to mat: %v", err))
+		fyne.Do(func() {
+			f.ProgressLabel.SetText(fmt.Sprintf("converting MaskWithOverrides to mat: %v", err))
+		})
 		return
 	}
 	defer mask.Close()
 
 	out, err := gocv.VideoWriterFile(path, codec, fps, f.Pipeline.VideoWidth, f.Pipeline.VideoHeight, true)
 	for i := rs.StartFrame; i <= rs.EndFrame; i++ {
-		f.ProgressLabel.SetText(fmt.Sprintf("%d/%d loading frame...", i, rs.EndFrame))
+		fyne.Do(func() {
+			f.ProgressLabel.SetText(fmt.Sprintf("%d/%d loading frame...", i, rs.EndFrame))
+		})
 		m := gocv.NewMat()
 		err := pipeline.LoadFrame(f.Pipeline.VideoCapture, i, &m)
 		if err != nil {
-			f.ProgressLabel.SetText(err.Error())
+			fyne.Do(func() {
+				f.ProgressLabel.SetText(err.Error())
+			})
 			return
 		}
-		f.ProgressBar.SetValue(f.ProgressBar.Value + 1)
-		f.ProgressLabel.SetText(fmt.Sprintf("%d/%d rendering frame...", i, rs.EndFrame))
+		fyne.Do(func() {
+			f.ProgressBar.SetValue(f.ProgressBar.Value + 1)
+			f.ProgressLabel.SetText(fmt.Sprintf("%d/%d rendering frame...", i, rs.EndFrame))
+		})
 
 		masked := gocv.NewMat()
 		gocv.Inpaint(m, mask, &masked, float32(rs.InpaintRadius), gocv.Telea)
-		f.ProgressBar.SetValue(f.ProgressBar.Value + 1)
-		f.ProgressLabel.SetText(fmt.Sprintf("%d/%d saving frame...", i, rs.EndFrame))
+		fyne.Do(func() {
+			f.ProgressBar.SetValue(f.ProgressBar.Value + 1)
+			f.ProgressLabel.SetText(fmt.Sprintf("%d/%d saving frame...", i, rs.EndFrame))
+		})
 
 		out.Write(masked)
 		m.Close()
 		masked.Close()
-		f.ProgressBar.SetValue(f.ProgressBar.Value + 1)
+		fyne.Do(func() {
+			f.ProgressBar.SetValue(f.ProgressBar.Value + 1)
+		})
 	}
 	err = out.Close()
 	if err != nil {
-		f.ProgressLabel.SetText("Error finalizing output")
+		fyne.Do(func() {
+			f.ProgressLabel.SetText("Error finalizing output")
+		})
 	}
-	f.ProgressLabel.SetText(fmt.Sprintf("Finished rendering %d-%d", rs.StartFrame, rs.EndFrame))
+	fyne.Do(func() {
+		f.ProgressLabel.SetText(fmt.Sprintf("Finished rendering %d-%d", rs.StartFrame, rs.EndFrame))
+	})
 }
