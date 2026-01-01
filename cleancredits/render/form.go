@@ -102,7 +102,9 @@ func (f *Form) ShowRenderSave() {
 			fmt.Println("No file selected")
 			return
 		}
-		f.Render(writer.URI().Path())
+		fyne.Do(func() {
+			f.Render(writer.URI().Path())
+		})
 	}, f.Window)
 }
 
@@ -135,6 +137,7 @@ func (f *Form) Render(path string) {
 
 	out, err := gocv.VideoWriterFile(path, codec, fps, f.Pipeline.VideoWidth, f.Pipeline.VideoHeight, true)
 	for i := rs.StartFrame; i <= rs.EndFrame; i++ {
+		f.ProgressLabel.SetText(fmt.Sprintf("%d/%d loading frame...", i, rs.EndFrame))
 		m := gocv.NewMat()
 		err := pipeline.LoadFrame(f.Pipeline.VideoCapture, i, &m)
 		if err != nil {
@@ -142,18 +145,17 @@ func (f *Form) Render(path string) {
 			return
 		}
 		f.ProgressBar.SetValue(f.ProgressBar.Value + 1)
-		f.ProgressLabel.SetText("%d/%d loaded")
+		f.ProgressLabel.SetText(fmt.Sprintf("%d/%d rendering frame...", i, rs.EndFrame))
 
 		masked := gocv.NewMat()
 		gocv.Inpaint(m, mask, &masked, float32(rs.InpaintRadius), gocv.Telea)
 		f.ProgressBar.SetValue(f.ProgressBar.Value + 1)
-		f.ProgressLabel.SetText("%d/%d inpainted")
+		f.ProgressLabel.SetText(fmt.Sprintf("%d/%d saving frame...", i, rs.EndFrame))
 
 		out.Write(masked)
 		m.Close()
 		masked.Close()
 		f.ProgressBar.SetValue(f.ProgressBar.Value + 1)
-		f.ProgressLabel.SetText("%d/%d rendered out")
 	}
 	err = out.Close()
 	if err != nil {
