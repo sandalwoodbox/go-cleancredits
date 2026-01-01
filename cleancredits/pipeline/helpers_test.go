@@ -12,6 +12,7 @@ import (
 	"gocv.io/x/gocv/contrib"
 
 	"github.com/sandalwoodbox/go-cleancredits/cleancredits/mask"
+	"github.com/sandalwoodbox/go-cleancredits/cleancredits/settings"
 )
 
 func TestClampInt(t *testing.T) {
@@ -310,7 +311,7 @@ func TestRenderMask_horses(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			ms := mask.Settings{
+			ms := settings.Mask{
 				HueMin:     tc.hueMin,
 				HueMax:     tc.hueMax,
 				SatMin:     tc.satMin,
@@ -645,7 +646,7 @@ func TestRenderMask_manual(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			ms := mask.Settings{
+			ms := settings.Mask{
 				HueMin:     tc.hueMin,
 				HueMax:     tc.hueMax,
 				SatMin:     tc.satMin,

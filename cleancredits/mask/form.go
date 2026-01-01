@@ -9,6 +9,7 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
+	"github.com/sandalwoodbox/go-cleancredits/cleancredits/settings"
 	ccWidget "github.com/sandalwoodbox/go-cleancredits/cleancredits/widget"
 )
 
@@ -41,22 +42,6 @@ type Form struct {
 	CropTop    binding.Int
 	CropRight  binding.Int
 	CropBottom binding.Int
-}
-
-type Settings struct {
-	Frame      int
-	Mode       string
-	HueMin     int
-	HueMax     int
-	SatMin     int
-	SatMax     int
-	ValMin     int
-	ValMax     int
-	Grow       int
-	CropLeft   int
-	CropTop    int
-	CropRight  int
-	CropBottom int
 }
 
 func NewForm(frameCount, videoWidth, videoHeight int) Form {
@@ -141,62 +126,62 @@ func (f Form) OnChange(fn func()) {
 	f.CropBottom.AddListener(l)
 }
 
-func (f Form) Settings() (Settings, error) {
+func (f Form) Settings() (settings.Mask, error) {
 	frame, err := f.Frame.Get()
 	if err != nil {
-		return Settings{}, fmt.Errorf("getting frame: %v", err)
+		return settings.Mask{}, fmt.Errorf("getting frame: %v", err)
 	}
 	mode, err := f.Mode.Get()
 	if err != nil {
-		return Settings{}, fmt.Errorf("getting mask mode: %v", err)
+		return settings.Mask{}, fmt.Errorf("getting mask mode: %v", err)
 	}
 
 	hueMin, err := f.HueMin.Get()
 	if err != nil {
-		return Settings{}, fmt.Errorf("getting hue min: %v", err)
+		return settings.Mask{}, fmt.Errorf("getting hue min: %v", err)
 	}
 	hueMax, err := f.HueMax.Get()
 	if err != nil {
-		return Settings{}, fmt.Errorf("getting hue max: %v", err)
+		return settings.Mask{}, fmt.Errorf("getting hue max: %v", err)
 	}
 	satMin, err := f.SatMin.Get()
 	if err != nil {
-		return Settings{}, fmt.Errorf("getting sat min: %v", err)
+		return settings.Mask{}, fmt.Errorf("getting sat min: %v", err)
 	}
 	satMax, err := f.SatMax.Get()
 	if err != nil {
-		return Settings{}, fmt.Errorf("getting sat max: %v", err)
+		return settings.Mask{}, fmt.Errorf("getting sat max: %v", err)
 	}
 	valMin, err := f.ValMin.Get()
 	if err != nil {
-		return Settings{}, fmt.Errorf("getting val min: %v", err)
+		return settings.Mask{}, fmt.Errorf("getting val min: %v", err)
 	}
 	valMax, err := f.ValMax.Get()
 	if err != nil {
-		return Settings{}, fmt.Errorf("getting val max: %v", err)
+		return settings.Mask{}, fmt.Errorf("getting val max: %v", err)
 	}
 
 	grow, err := f.Grow.Get()
 	if err != nil {
-		return Settings{}, fmt.Errorf("getting grow: %v", err)
+		return settings.Mask{}, fmt.Errorf("getting grow: %v", err)
 	}
 	cropLeft, err := f.CropLeft.Get()
 	if err != nil {
-		return Settings{}, fmt.Errorf("getting cropLeft: %v", err)
+		return settings.Mask{}, fmt.Errorf("getting cropLeft: %v", err)
 	}
 	cropTop, err := f.CropTop.Get()
 	if err != nil {
-		return Settings{}, fmt.Errorf("getting cropTop: %v", err)
+		return settings.Mask{}, fmt.Errorf("getting cropTop: %v", err)
 	}
 	cropRight, err := f.CropRight.Get()
 	if err != nil {
-		return Settings{}, fmt.Errorf("getting cropRight: %v", err)
+		return settings.Mask{}, fmt.Errorf("getting cropRight: %v", err)
 	}
 	cropBottom, err := f.CropBottom.Get()
 	if err != nil {
-		return Settings{}, fmt.Errorf("getting cropBottom: %v", err)
+		return settings.Mask{}, fmt.Errorf("getting cropBottom: %v", err)
 	}
-	return Settings{
+	return settings.Mask{
 		Frame:      frame,
 		Mode:       mode,
 		HueMin:     hueMin,

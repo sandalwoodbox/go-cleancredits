@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"github.com/sandalwoodbox/go-cleancredits/cleancredits/settings"
 	ccWidget "github.com/sandalwoodbox/go-cleancredits/cleancredits/widget"
 )
 
@@ -23,10 +24,6 @@ type Form struct {
 	Frame binding.Int
 	Mode  binding.String
 	Size  binding.Int
-}
-
-type Settings struct {
-	Frame int
 }
 
 func NewForm(frameCount int) Form {
@@ -54,12 +51,12 @@ func (f Form) OnChange(fn func()) {
 	f.Mode.AddListener(l)
 }
 
-func (f Form) Settings() (Settings, error) {
+func (f Form) Settings() (settings.Draw, error) {
 	frame, err := f.Frame.Get()
 	if err != nil {
-		return Settings{}, fmt.Errorf("getting frame: %v", err)
+		return settings.Draw{}, fmt.Errorf("getting frame: %v", err)
 	}
-	return Settings{
+	return settings.Draw{
 		Frame: frame,
 	}, nil
 }

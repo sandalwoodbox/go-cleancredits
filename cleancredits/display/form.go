@@ -11,6 +11,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
+	"github.com/sandalwoodbox/go-cleancredits/cleancredits/settings"
 	ccWidget "github.com/sandalwoodbox/go-cleancredits/cleancredits/widget"
 )
 
@@ -56,13 +57,6 @@ type Form struct {
 	Zoom    binding.String
 	AnchorX binding.Int
 	AnchorY binding.Int
-}
-
-type Settings struct {
-	Mode    string
-	Zoom    string
-	AnchorX int
-	AnchorY int
 }
 
 func NewForm(width, height int) Form {
@@ -124,27 +118,27 @@ func (f Form) OnChange(fn func()) {
 	f.AnchorY.AddListener(l)
 }
 
-func (f Form) Settings() (Settings, error) {
+func (f Form) Settings() (settings.Display, error) {
 	mode, err := f.Mode.Get()
 	if err != nil {
-		return Settings{}, fmt.Errorf("getting mode: %v", err)
+		return settings.Display{}, fmt.Errorf("getting mode: %v", err)
 	}
 
 	zoom, err := f.Zoom.Get()
 	if err != nil {
-		return Settings{}, fmt.Errorf("getting zoom: %v", err)
+		return settings.Display{}, fmt.Errorf("getting zoom: %v", err)
 	}
 
 	anchorX, err := f.AnchorX.Get()
 	if err != nil {
-		return Settings{}, fmt.Errorf("getting anchorX: %v", err)
+		return settings.Display{}, fmt.Errorf("getting anchorX: %v", err)
 	}
 
 	anchorY, err := f.AnchorY.Get()
 	if err != nil {
-		return Settings{}, fmt.Errorf("getting anchorY: %v", err)
+		return settings.Display{}, fmt.Errorf("getting anchorY: %v", err)
 	}
-	return Settings{
+	return settings.Display{
 		Mode:    mode,
 		Zoom:    zoom,
 		AnchorX: anchorX,

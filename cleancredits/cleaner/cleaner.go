@@ -34,7 +34,7 @@ type Cleaner struct {
 	SelectedTab binding.String
 
 	UpdateChannel chan struct{}
-	Pipeline      pipeline.Pipeline
+	Pipeline      *pipeline.Pipeline
 	Preview       preview.Preview
 }
 
@@ -44,17 +44,18 @@ func New(vc *gocv.VideoCapture) Cleaner {
 	frameCount := int(vc.Get(gocv.VideoCaptureFrameCount))
 	displayWidth := 720
 	displayHeight := 480
+	p := pipeline.NewPipeline(vc, displayWidth, displayHeight)
 	c := Cleaner{
 		VideoCapture:  vc,
 		MaskForm:      mask.NewForm(frameCount, videoWidth, videoHeight),
 		DrawForm:      draw.NewForm(frameCount),
-		RenderForm:    render.NewForm(frameCount),
 		DisplayForm:   display.NewForm(videoWidth, videoHeight),
 		SelectedTab:   binding.NewString(),
 		UpdateChannel: make(chan struct{}),
-		Pipeline:      pipeline.NewPipeline(vc, displayWidth, displayHeight),
+		Pipeline:      &p,
 		Preview:       preview.NewPreview(displayWidth, displayHeight),
 	}
+	c.RenderForm = render.NewForm(frameCount, c.Pipeline)
 	maskTab := container.NewTabItem(MaskTabName, c.MaskForm.Container)
 	drawTab := container.NewTabItem(DrawTabName, c.DrawForm.Container)
 	renderTab := container.NewTabItem(RenderTabName, c.RenderForm.Container)
@@ -130,6 +131,11 @@ func (c *Cleaner) UpdatePipeline() {
 		fmt.Println("Error getting display settings: ", err)
 		return
 	}
+	renderSettings, err := c.RenderForm.Settings()
+	if err != nil {
+		fmt.Println("Error getting render settings: ", err)
+		return
+	}
 
 	tabName, err := c.SelectedTab.Get()
 	if err != nil {
@@ -150,7 +156,7 @@ func (c *Cleaner) UpdatePipeline() {
 	case "Draw":
 		fNum = drawSettings.Frame
 	}
-	img, err := c.Pipeline.ApplyMask(fNum, displaySettings)
+	img, err := c.Pipeline.ApplyMask(fNum, displaySettings, renderSettings)
 	if err != nil {
 		fmt.Println("Error applying mask: ", err)
 		return

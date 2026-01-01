@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"github.com/sandalwoodbox/go-cleancredits/cleancredits/mask"
+	"github.com/sandalwoodbox/go-cleancredits/cleancredits/settings"
 	"gocv.io/x/gocv"
 )
 
@@ -29,7 +30,7 @@ func LoadFrame(vc *gocv.VideoCapture, n int, dst *gocv.Mat) error {
 	return nil
 }
 
-func RenderMask(mat gocv.Mat, dst *gocv.Mat, s mask.Settings) {
+func RenderMask(mat gocv.Mat, dst *gocv.Mat, s settings.Mask) {
 	// wait := 1
 	// w := gocv.NewWindow("RenderMask")
 	// w.IMShow(mat)
@@ -147,13 +148,15 @@ func ZoomCropRectangle(zoomFactor float64, anchorX, anchorY, videoWidth, videoHe
 
 func ImageToMatGray(i image.Image) (gocv.Mat, error) {
 	mRGB, err := gocv.ImageToMatRGB(i)
-	defer mRGB.Close()
 	if err != nil {
+		mRGB.Close()
 		return gocv.NewMat(), fmt.Errorf("converting p.Mask to mat: %v", err)
 	}
+	defer mRGB.Close()
 	mGray := gocv.NewMat()
 	err = gocv.CvtColor(mRGB, &mGray, gocv.ColorBGRToGray)
 	if err != nil {
+		mGray.Close()
 		return gocv.NewMat(), fmt.Errorf("converting maskMat to gray: %v", err)
 	}
 	return mGray, nil

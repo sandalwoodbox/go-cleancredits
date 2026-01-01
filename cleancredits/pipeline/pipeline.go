@@ -9,8 +9,7 @@ import (
 	"gocv.io/x/gocv"
 
 	"github.com/sandalwoodbox/go-cleancredits/cleancredits/display"
-	"github.com/sandalwoodbox/go-cleancredits/cleancredits/draw"
-	"github.com/sandalwoodbox/go-cleancredits/cleancredits/mask"
+	"github.com/sandalwoodbox/go-cleancredits/cleancredits/settings"
 )
 
 type Pipeline struct {
@@ -32,9 +31,10 @@ type Pipeline struct {
 
 	// Last rendered settings
 	DisplayFrameNumber int
-	MaskSettings       mask.Settings
-	DrawSettings       draw.Settings
-	DisplaySettings    display.Settings
+	MaskSettings       settings.Mask
+	DrawSettings       settings.Draw
+	DisplaySettings    settings.Display
+	RenderSettings     settings.Render
 
 	// Partial render status
 	MaskChanged bool
@@ -52,7 +52,7 @@ func NewPipeline(vc *gocv.VideoCapture, displayWidth, displayHeight int) Pipelin
 	}
 }
 
-func (p *Pipeline) UpdateMask(ms mask.Settings, drawSettings draw.Settings) error {
+func (p *Pipeline) UpdateMask(ms settings.Mask, drawSettings settings.Draw) error {
 	maskFrameChanged := ms.Frame != p.MaskSettings.Frame || p.MaskFrame == nil
 
 	var maskFrameMat gocv.Mat
@@ -108,7 +108,7 @@ func (p *Pipeline) UpdateMask(ms mask.Settings, drawSettings draw.Settings) erro
 	return nil
 }
 
-func (p *Pipeline) ApplyMask(frame int, ds display.Settings) (image.Image, error) {
+func (p *Pipeline) ApplyMask(frame int, ds settings.Display, rs settings.Render) (image.Image, error) {
 	frameChanged := frame != p.DisplayFrameNumber || p.DisplayFrame == nil
 	var displayFrameMat gocv.Mat
 	defer displayFrameMat.Close()
@@ -132,7 +132,7 @@ func (p *Pipeline) ApplyMask(frame int, ds display.Settings) (image.Image, error
 		}
 	}
 
-	modeChanged := frameChanged || p.DisplaySettings.Mode != ds.Mode || p.MaskChanged || p.Display == nil
+	modeChanged := frameChanged || p.DisplaySettings.Mode != ds.Mode || p.MaskChanged || p.Display == nil || (ds.Mode == display.ViewPreview && rs.InpaintRadius != p.RenderSettings.InpaintRadius)
 	var displayMat gocv.Mat
 	defer displayMat.Close()
 	if modeChanged {
@@ -157,8 +157,7 @@ func (p *Pipeline) ApplyMask(frame int, ds display.Settings) (image.Image, error
 			if err != nil {
 				return nil, fmt.Errorf("converting p.MaskWithOverrides to mat: %v", err)
 			}
-			// TODO: allow setting inpaint radius
-			gocv.Inpaint(displayFrameMat, m, &displayMat, 3, gocv.Telea)
+			gocv.Inpaint(displayFrameMat, m, &displayMat, float32(p.RenderSettings.InpaintRadius), gocv.Telea)
 		}
 		i, err := displayMat.ToImage()
 		if err != nil {
@@ -195,7 +194,7 @@ func (p *Pipeline) ApplyMask(frame int, ds display.Settings) (image.Image, error
 	return zoomed, nil
 }
 
-func (p Pipeline) maskSettingsChanged(ms mask.Settings) bool {
+func (p Pipeline) maskSettingsChanged(ms settings.Mask) bool {
 	switch {
 	case ms.HueMin != p.MaskSettings.HueMin,
 		ms.HueMax != p.MaskSettings.HueMax,
@@ -213,7 +212,7 @@ func (p Pipeline) maskSettingsChanged(ms mask.Settings) bool {
 	return false
 }
 
-func (p Pipeline) zoomChanged(ds display.Settings) bool {
+func (p Pipeline) zoomChanged(ds settings.Display) bool {
 	switch {
 	case ds.Zoom != p.DisplaySettings.Zoom,
 		ds.AnchorX != p.DisplaySettings.AnchorX,
