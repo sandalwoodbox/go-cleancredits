@@ -90,7 +90,7 @@ func NewForm(frameCount, videoWidth, videoHeight int) Form {
 		layout.NewVBoxLayout(),
 		container.New(
 			layout.NewGridLayout(3),
-			widget.NewLabel("Frame"), ccWidget.NewIntSliderWithData(0, frameCount-1, f.Frame), ccWidget.NewIntEntryWithData(f.Frame),
+			widget.NewLabel("Frame"), ccWidget.NewIntSliderWithData(0, frameCount-1, f.Frame), ccWidget.NewIntEntryWithData(0, frameCount-1, f.Frame),
 
 			widget.NewLabel("Hue / Saturation / Value"), widget.NewLabel(""), widget.NewLabel(""),
 			widget.NewLabel("Hue Min"), ccWidget.NewIntSliderWithData(0, HueMax, f.HueMin), widget.NewLabel(""),

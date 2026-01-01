@@ -1,26 +1,30 @@
 package widget
 
 import (
+	"fmt"
 	"strconv"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
-	"fyne.io/fyne/v2/driver/mobile"
 	"fyne.io/fyne/v2/widget"
 )
 
 type IntEntry struct {
+	Min, Max int
 	widget.Entry
 }
 
-func NewIntEntry() *IntEntry {
-	entry := &IntEntry{}
+func NewIntEntry(min, max int) *IntEntry {
+	entry := &IntEntry{
+		Min: min,
+		Max: max,
+	}
 	entry.ExtendBaseWidget(entry)
 	return entry
 }
 
-func NewIntEntryWithData(data binding.Int) *IntEntry {
-	e := NewIntEntry()
+func NewIntEntryWithData(min, max int, data binding.Int) *IntEntry {
+	e := NewIntEntry(min, max)
 	e.Bind(binding.IntToString(data))
 	e.Validator = nil
 
@@ -46,6 +50,22 @@ func (e *IntEntry) TypedShortcut(shortcut fyne.Shortcut) {
 	}
 }
 
-func (e *IntEntry) Keyboard() mobile.KeyboardType {
-	return mobile.NumberKeyboard
+func (e *IntEntry) TypedKey(key *fyne.KeyEvent) {
+	val, err := strconv.Atoi(e.Text)
+	if err != nil {
+		fmt.Println("Error parsing text to int: ", err)
+	}
+	switch key.Name {
+	case fyne.KeyUp:
+		if val < e.Max {
+			e.SetText(strconv.Itoa(val + 1))
+		}
+		return
+	case fyne.KeyDown:
+		if val > e.Min {
+			e.SetText(strconv.Itoa(val - 1))
+		}
+		return
+	}
+	e.Entry.TypedKey(key)
 }

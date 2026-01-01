@@ -50,9 +50,9 @@ func NewForm(frameCount int, p *pipeline.Pipeline, w fyne.Window) Form {
 		layout.NewVBoxLayout(),
 		container.New(
 			layout.NewGridLayout(3),
-			widget.NewLabel("Start frame"), ccWidget.NewIntSliderWithData(0, frameCount-1, f.StartFrame), ccWidget.NewIntEntryWithData(f.StartFrame),
-			widget.NewLabel("End frame"), ccWidget.NewIntSliderWithData(0, frameCount-1, f.EndFrame), ccWidget.NewIntEntryWithData(f.EndFrame),
-			widget.NewLabel("Inpaint radius"), ccWidget.NewIntSliderWithData(0, 10, f.InpaintRadius), ccWidget.NewIntEntryWithData(f.InpaintRadius),
+			widget.NewLabel("Start frame"), ccWidget.NewIntSliderWithData(0, frameCount-1, f.StartFrame), ccWidget.NewIntEntryWithData(0, frameCount-1, f.StartFrame),
+			widget.NewLabel("End frame"), ccWidget.NewIntSliderWithData(0, frameCount-1, f.EndFrame), ccWidget.NewIntEntryWithData(0, frameCount-1, f.EndFrame),
+			widget.NewLabel("Inpaint radius"), ccWidget.NewIntSliderWithData(0, 10, f.InpaintRadius), ccWidget.NewIntEntryWithData(0, frameCount-1, f.InpaintRadius),
 			widget.NewButton("Render", f.ShowRenderSave), widget.NewLabel(""), widget.NewLabel(""),
 		),
 		container.New(

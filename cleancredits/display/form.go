@@ -82,8 +82,8 @@ func NewForm(width, height int) Form {
 	if err != nil {
 		fmt.Println("Error setting anchorY: ", err)
 	}
-	anchorXEntry := ccWidget.NewIntEntryWithData(f.AnchorX)
-	anchorYEntry := ccWidget.NewIntEntryWithData(f.AnchorY)
+	anchorXEntry := ccWidget.NewIntEntryWithData(0, width, f.AnchorX)
+	anchorYEntry := ccWidget.NewIntEntryWithData(0, height, f.AnchorY)
 	f.Container =
 		container.New(
 			layout.NewHBoxLayout(),

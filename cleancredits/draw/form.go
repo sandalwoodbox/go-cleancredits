@@ -40,9 +40,9 @@ func NewForm(frameCount int) Form {
 		layout.NewVBoxLayout(),
 		container.New(
 			layout.NewGridLayout(3),
-			widget.NewLabel("Frame"), ccWidget.NewIntSliderWithData(0, frameCount-1, f.Frame), ccWidget.NewIntEntryWithData(f.Frame),
+			widget.NewLabel("Frame"), ccWidget.NewIntSliderWithData(0, frameCount-1, f.Frame), ccWidget.NewIntEntryWithData(0, frameCount-1, f.Frame),
 			widget.NewLabel("Mode"), widget.NewSelectWithData([]string{Include, Exclude}, f.Mode), widget.NewLabel(""),
-			widget.NewLabel("Size"), ccWidget.NewIntSliderWithData(0, 100, f.Size), ccWidget.NewIntEntryWithData(f.Size),
+			widget.NewLabel("Size"), ccWidget.NewIntSliderWithData(0, 100, f.Size), ccWidget.NewIntEntryWithData(0, 100, f.Size),
 		),
 	)
 	return f
