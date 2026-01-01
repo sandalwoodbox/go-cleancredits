@@ -41,6 +41,8 @@ func New(vc *gocv.VideoCapture) Cleaner {
 	videoWidth := int(vc.Get(gocv.VideoCaptureFrameWidth))
 	videoHeight := int(vc.Get(gocv.VideoCaptureFrameWidth))
 	frameCount := int(vc.Get(gocv.VideoCaptureFrameCount))
+	displayWidth := 720
+	displayHeight := 480
 	c := Cleaner{
 		VideoCapture:  vc,
 		MaskForm:      mask.NewForm(frameCount, videoWidth, videoHeight),
@@ -48,8 +50,8 @@ func New(vc *gocv.VideoCapture) Cleaner {
 		DisplayForm:   display.NewForm(),
 		SelectedTab:   binding.NewString(),
 		UpdateChannel: make(chan struct{}),
-		Pipeline:      pipeline.NewPipeline(vc),
-		Preview:       preview.NewPreview(),
+		Pipeline:      pipeline.NewPipeline(vc, displayWidth, displayHeight),
+		Preview:       preview.NewPreview(displayWidth, displayHeight),
 	}
 	maskTab := container.NewTabItem(MaskTabName, c.MaskForm.Container)
 	drawTab := container.NewTabItem(DrawTabName, c.DrawForm.Container)
@@ -96,7 +98,7 @@ func New(vc *gocv.VideoCapture) Cleaner {
 	return c
 }
 
-func (c Cleaner) UpdatePipeline() {
+func (c *Cleaner) UpdatePipeline() {
 	maskSettings, err := c.MaskForm.Settings()
 	if err != nil {
 		fmt.Println("Error getting mask settings: ", err)

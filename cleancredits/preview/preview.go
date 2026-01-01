@@ -14,12 +14,12 @@ type Preview struct {
 	Container *fyne.Container
 }
 
-func NewPreview() Preview {
+func NewPreview(w, h int) Preview {
 	i := image.NewRGBA(image.Rect(0, 0, 1, 1))
 	i.Set(0, 0, color.RGBA{0, 0, 0, 0})
 	img := canvas.NewImageFromImage(i)
 	img.FillMode = canvas.ImageFillContain
-	img.SetMinSize(fyne.NewSize(720, 480))
+	img.SetMinSize(fyne.NewSize(float32(w), float32(h)))
 	p := Preview{
 		Image:     img,
 		Container: container.NewStack(img),
