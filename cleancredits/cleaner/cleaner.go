@@ -155,6 +155,8 @@ func (c *Cleaner) UpdatePipeline() {
 	switch tabName {
 	case "Draw":
 		fNum = drawSettings.Frame
+	case "Render":
+		fNum = renderSettings.Frame
 	}
 	img, err := c.Pipeline.ApplyMask(fNum, displaySettings, renderSettings)
 	if err != nil {

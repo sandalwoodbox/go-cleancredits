@@ -28,6 +28,7 @@ type Mask struct {
 }
 
 type Render struct {
+	Frame         int
 	StartFrame    int
 	EndFrame      int
 	InpaintRadius int

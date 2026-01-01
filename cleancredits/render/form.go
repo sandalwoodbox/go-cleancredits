@@ -23,6 +23,7 @@ type Form struct {
 	ProgressLabel *widget.Label
 	Pipeline      *pipeline.Pipeline
 
+	Frame         binding.Int
 	StartFrame    binding.Int
 	EndFrame      binding.Int
 	InpaintRadius binding.Int
@@ -32,6 +33,7 @@ func NewForm(frameCount int, p *pipeline.Pipeline, w fyne.Window) Form {
 	f := Form{
 		Window:        w,
 		Pipeline:      p,
+		Frame:         binding.NewInt(),
 		StartFrame:    binding.NewInt(),
 		EndFrame:      binding.NewInt(),
 		InpaintRadius: binding.NewInt(),
@@ -63,6 +65,27 @@ func NewForm(frameCount int, p *pipeline.Pipeline, w fyne.Window) Form {
 		f.ProgressBar.Hide()
 		f.ProgressLabel.Hide()
 	})
+	// Frame will always be the last modified frame picker.
+	f.StartFrame.AddListener(binding.NewDataListener(func() {
+		startFrame, err := f.StartFrame.Get()
+		if err != nil {
+			fmt.Println("Error getting startFrame: ", err)
+		}
+		err = f.Frame.Set(startFrame)
+		if err != nil {
+			fmt.Println("Error setting frame: ", err)
+		}
+	}))
+	f.EndFrame.AddListener(binding.NewDataListener(func() {
+		endFrame, err := f.EndFrame.Get()
+		if err != nil {
+			fmt.Println("Error getting endFrame: ", err)
+		}
+		err = f.Frame.Set(endFrame)
+		if err != nil {
+			fmt.Println("Error setting frame: ", err)
+		}
+	}))
 	return f
 }
 
@@ -74,6 +97,10 @@ func (f Form) OnChange(fn func()) {
 }
 
 func (f Form) Settings() (settings.Render, error) {
+	frame, err := f.Frame.Get()
+	if err != nil {
+		return settings.Render{}, fmt.Errorf("getting frame: %v", err)
+	}
 	startFrame, err := f.StartFrame.Get()
 	if err != nil {
 		return settings.Render{}, fmt.Errorf("getting startFrame: %v", err)
@@ -87,6 +114,7 @@ func (f Form) Settings() (settings.Render, error) {
 		return settings.Render{}, fmt.Errorf("getting inpaintRadius: %v", err)
 	}
 	return settings.Render{
+		Frame:         frame,
 		StartFrame:    startFrame,
 		EndFrame:      endFrame,
 		InpaintRadius: inpaintRadius,
@@ -115,7 +143,9 @@ func (f *Form) Render(path string) {
 	f.ProgressLabel.Show()
 	rs, err := f.Settings()
 	if err != nil {
-		f.ProgressLabel.SetText(fmt.Sprintf("Error gettings settings: %v", err))
+		fyne.Do(func() {
+			f.ProgressLabel.SetText(fmt.Sprintf("Error gettings settings: %v", err))
+		})
 		return
 	}
 	frameCount := rs.EndFrame - rs.StartFrame + 1
@@ -178,6 +208,6 @@ func (f *Form) Render(path string) {
 		})
 	}
 	fyne.Do(func() {
-		f.ProgressLabel.SetText(fmt.Sprintf("Finished rendering %d-%d", rs.StartFrame, rs.EndFrame))
+		f.ProgressLabel.SetText(fmt.Sprintf("Finished rendering %d-%d to %s", rs.StartFrame, rs.EndFrame, path))
 	})
 }
