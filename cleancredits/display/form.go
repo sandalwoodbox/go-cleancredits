@@ -65,15 +65,29 @@ type Settings struct {
 	AnchorY int
 }
 
-func NewForm() Form {
+func NewForm(width, height int) Form {
 	f := Form{
 		Mode:    binding.NewString(),
 		Zoom:    binding.NewString(),
 		AnchorX: binding.NewInt(),
 		AnchorY: binding.NewInt(),
 	}
-	f.Mode.Set(ViewMask)
-	f.Zoom.Set(ZoomFit)
+	err := f.Mode.Set(ViewMask)
+	if err != nil {
+		fmt.Println("Error setting mode: ", err)
+	}
+	err = f.Zoom.Set(ZoomFit)
+	if err != nil {
+		fmt.Println("Error setting zoom: ", err)
+	}
+	err = f.AnchorX.Set(width / 2)
+	if err != nil {
+		fmt.Println("Error setting anchorX: ", err)
+	}
+	err = f.AnchorY.Set(height / 2)
+	if err != nil {
+		fmt.Println("Error setting anchorY: ", err)
+	}
 	anchorXEntry := ccWidget.NewIntEntryWithData(f.AnchorX)
 	anchorYEntry := ccWidget.NewIntEntryWithData(f.AnchorY)
 	f.Container =

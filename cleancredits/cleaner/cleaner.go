@@ -39,7 +39,7 @@ type Cleaner struct {
 
 func New(vc *gocv.VideoCapture) Cleaner {
 	videoWidth := int(vc.Get(gocv.VideoCaptureFrameWidth))
-	videoHeight := int(vc.Get(gocv.VideoCaptureFrameWidth))
+	videoHeight := int(vc.Get(gocv.VideoCaptureFrameHeight))
 	frameCount := int(vc.Get(gocv.VideoCaptureFrameCount))
 	displayWidth := 720
 	displayHeight := 480
@@ -47,7 +47,7 @@ func New(vc *gocv.VideoCapture) Cleaner {
 		VideoCapture:  vc,
 		MaskForm:      mask.NewForm(frameCount, videoWidth, videoHeight),
 		DrawForm:      draw.NewForm(frameCount),
-		DisplayForm:   display.NewForm(),
+		DisplayForm:   display.NewForm(videoWidth, videoHeight),
 		SelectedTab:   binding.NewString(),
 		UpdateChannel: make(chan struct{}),
 		Pipeline:      pipeline.NewPipeline(vc, displayWidth, displayHeight),
@@ -94,6 +94,19 @@ func New(vc *gocv.VideoCapture) Cleaner {
 	c.MaskForm.OnChange(scheduleUpdate)
 	c.DrawForm.OnChange(scheduleUpdate)
 	c.DisplayForm.OnChange(scheduleUpdate)
+	// Change draw tab frame when mask frame changes (but not vice versa)
+	c.MaskForm.Frame.AddListener(binding.NewDataListener(func() {
+		f, err := c.MaskForm.Frame.Get()
+		if err != nil {
+			fmt.Println("Error getting MaskForm.Frame: ", err)
+			return
+		}
+		err = c.DrawForm.Frame.Set(f)
+		if err != nil {
+			fmt.Println("Error getting DrawForm.Frame: ", err)
+			return
+		}
+	}))
 
 	return c
 }
