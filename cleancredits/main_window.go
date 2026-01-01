@@ -43,7 +43,7 @@ func openVideo(w fyne.Window) {
 			w.Close()
 			return
 		}
-		c := cleaner.New(vc)
+		c := cleaner.New(vc, w)
 		w.SetContent(c.Container)
 	}, w)
 }

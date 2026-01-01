@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 	"gocv.io/x/gocv"
@@ -17,6 +18,7 @@ import (
 
 type Form struct {
 	Container     *fyne.Container
+	Window        fyne.Window
 	ProgressBar   *widget.ProgressBar
 	ProgressLabel *widget.Label
 	Pipeline      *pipeline.Pipeline
@@ -26,8 +28,9 @@ type Form struct {
 	InpaintRadius binding.Int
 }
 
-func NewForm(frameCount int, p *pipeline.Pipeline) Form {
+func NewForm(frameCount int, p *pipeline.Pipeline, w fyne.Window) Form {
 	f := Form{
+		Window:        w,
 		Pipeline:      p,
 		StartFrame:    binding.NewInt(),
 		EndFrame:      binding.NewInt(),
@@ -48,7 +51,7 @@ func NewForm(frameCount int, p *pipeline.Pipeline) Form {
 			widget.NewLabel("Start frame"), ccWidget.NewIntSliderWithData(0, frameCount-1, f.StartFrame), ccWidget.NewIntEntryWithData(f.StartFrame),
 			widget.NewLabel("End frame"), ccWidget.NewIntSliderWithData(0, frameCount-1, f.EndFrame), ccWidget.NewIntEntryWithData(f.EndFrame),
 			widget.NewLabel("Inpaint radius"), ccWidget.NewIntSliderWithData(0, 10, f.InpaintRadius), ccWidget.NewIntEntryWithData(f.InpaintRadius),
-			widget.NewButton("Render", f.Render), widget.NewLabel(""), widget.NewLabel(""),
+			widget.NewButton("Render", f.ShowRenderSave), widget.NewLabel(""), widget.NewLabel(""),
 		),
 		container.New(
 			layout.NewVBoxLayout(),
@@ -90,7 +93,20 @@ func (f Form) Settings() (settings.Render, error) {
 	}, nil
 }
 
-func (f *Form) Render() {
+func (f *Form) ShowRenderSave() {
+	dialog.ShowFileSave(func(writer fyne.URIWriteCloser, err error) {
+		if err != nil {
+			dialog.ShowError(fmt.Errorf("error choosing save file: %v", err), f.Window)
+		}
+		if writer == nil {
+			fmt.Println("No file selected")
+			return
+		}
+		f.Render(writer.URI().Path())
+	}, f.Window)
+}
+
+func (f *Form) Render(path string) {
 	f.ProgressLabel.SetText("")
 	f.ProgressLabel.Show()
 	rs, err := f.Settings()
@@ -117,7 +133,7 @@ func (f *Form) Render() {
 	}
 	defer mask.Close()
 
-	out, err := gocv.VideoWriterFile("out.mp4", codec, fps, f.Pipeline.VideoWidth, f.Pipeline.VideoHeight, true)
+	out, err := gocv.VideoWriterFile(path, codec, fps, f.Pipeline.VideoWidth, f.Pipeline.VideoHeight, true)
 	for i := rs.StartFrame; i <= rs.EndFrame; i++ {
 		m := gocv.NewMat()
 		err := pipeline.LoadFrame(f.Pipeline.VideoCapture, i, &m)

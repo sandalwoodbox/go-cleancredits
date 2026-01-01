@@ -38,7 +38,7 @@ type Cleaner struct {
 	Preview       preview.Preview
 }
 
-func New(vc *gocv.VideoCapture) Cleaner {
+func New(vc *gocv.VideoCapture, w fyne.Window) Cleaner {
 	videoWidth := int(vc.Get(gocv.VideoCaptureFrameWidth))
 	videoHeight := int(vc.Get(gocv.VideoCaptureFrameHeight))
 	frameCount := int(vc.Get(gocv.VideoCaptureFrameCount))
@@ -55,7 +55,7 @@ func New(vc *gocv.VideoCapture) Cleaner {
 		Pipeline:      &p,
 		Preview:       preview.NewPreview(displayWidth, displayHeight),
 	}
-	c.RenderForm = render.NewForm(frameCount, c.Pipeline)
+	c.RenderForm = render.NewForm(frameCount, c.Pipeline, w)
 	maskTab := container.NewTabItem(MaskTabName, c.MaskForm.Container)
 	drawTab := container.NewTabItem(DrawTabName, c.DrawForm.Container)
 	renderTab := container.NewTabItem(RenderTabName, c.RenderForm.Container)

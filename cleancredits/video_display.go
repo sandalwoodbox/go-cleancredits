@@ -1,3 +1,0 @@
-package cleancredits
-
-// InpaintRadius int
