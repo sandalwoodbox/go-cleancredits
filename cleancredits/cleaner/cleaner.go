@@ -7,7 +7,6 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/layout"
-	"fyne.io/fyne/v2/widget"
 	"gocv.io/x/gocv"
 
 	"github.com/sandalwoodbox/go-cleancredits/cleancredits/display"
@@ -15,6 +14,7 @@ import (
 	"github.com/sandalwoodbox/go-cleancredits/cleancredits/mask"
 	"github.com/sandalwoodbox/go-cleancredits/cleancredits/pipeline"
 	"github.com/sandalwoodbox/go-cleancredits/cleancredits/preview"
+	"github.com/sandalwoodbox/go-cleancredits/cleancredits/render"
 )
 
 const (
@@ -30,6 +30,7 @@ type Cleaner struct {
 	MaskForm    mask.Form
 	DrawForm    draw.Form
 	DisplayForm display.Form
+	RenderForm  render.Form
 	SelectedTab binding.String
 
 	UpdateChannel chan struct{}
@@ -47,6 +48,7 @@ func New(vc *gocv.VideoCapture) Cleaner {
 		VideoCapture:  vc,
 		MaskForm:      mask.NewForm(frameCount, videoWidth, videoHeight),
 		DrawForm:      draw.NewForm(frameCount),
+		RenderForm:    render.NewForm(frameCount),
 		DisplayForm:   display.NewForm(videoWidth, videoHeight),
 		SelectedTab:   binding.NewString(),
 		UpdateChannel: make(chan struct{}),
@@ -55,7 +57,7 @@ func New(vc *gocv.VideoCapture) Cleaner {
 	}
 	maskTab := container.NewTabItem(MaskTabName, c.MaskForm.Container)
 	drawTab := container.NewTabItem(DrawTabName, c.DrawForm.Container)
-	renderTab := container.NewTabItem(RenderTabName, widget.NewLabel("Render tab"))
+	renderTab := container.NewTabItem(RenderTabName, c.RenderForm.Container)
 	left := container.NewAppTabs(maskTab, drawTab, renderTab)
 	left.OnSelected = func(ti *container.TabItem) {
 		switch ti {
@@ -94,6 +96,7 @@ func New(vc *gocv.VideoCapture) Cleaner {
 	c.MaskForm.OnChange(scheduleUpdate)
 	c.DrawForm.OnChange(scheduleUpdate)
 	c.DisplayForm.OnChange(scheduleUpdate)
+	c.RenderForm.OnChange(scheduleUpdate)
 	// Change draw tab frame when mask frame changes (but not vice versa)
 	c.MaskForm.Frame.AddListener(binding.NewDataListener(func() {
 		f, err := c.MaskForm.Frame.Get()
