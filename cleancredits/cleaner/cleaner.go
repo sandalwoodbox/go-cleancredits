@@ -2,6 +2,7 @@ package cleaner
 
 import (
 	"fmt"
+	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -34,6 +35,7 @@ type Cleaner struct {
 	SelectedTab binding.String
 
 	UpdateChannel chan struct{}
+	UpdateLocker  *sync.Mutex
 	Pipeline      *pipeline.Pipeline
 	Preview       preview.Preview
 }
@@ -52,6 +54,7 @@ func New(vc *gocv.VideoCapture, w fyne.Window) Cleaner {
 		DisplayForm:   display.NewForm(videoWidth, videoHeight),
 		SelectedTab:   binding.NewString(),
 		UpdateChannel: make(chan struct{}),
+		UpdateLocker:  &sync.Mutex{},
 		Pipeline:      &p,
 		Preview:       preview.NewPreview(displayWidth, displayHeight),
 	}
@@ -89,7 +92,12 @@ func New(vc *gocv.VideoCapture, w fyne.Window) Cleaner {
 	}
 	go func() {
 		for range c.UpdateChannel {
-			fyne.DoAndWait(c.UpdatePipeline)
+			c.UpdateLocker.Lock()
+			// Use another goroutine here to ensure UpdateChannel is consumed & unblocked
+			// immediately.
+			go func() {
+				c.UpdatePipeline()
+			}()
 		}
 	}()
 	scheduleUpdateListener := binding.NewDataListener(scheduleUpdate)
@@ -119,27 +127,32 @@ func (c *Cleaner) UpdatePipeline() {
 	maskSettings, err := c.MaskForm.Settings()
 	if err != nil {
 		fmt.Println("Error getting mask settings: ", err)
+		c.UpdateLocker.Unlock()
 		return
 	}
 	drawSettings, err := c.DrawForm.Settings()
 	if err != nil {
 		fmt.Println("Error getting draw settings: ", err)
+		c.UpdateLocker.Unlock()
 		return
 	}
 	displaySettings, err := c.DisplayForm.Settings()
 	if err != nil {
 		fmt.Println("Error getting display settings: ", err)
+		c.UpdateLocker.Unlock()
 		return
 	}
 	renderSettings, err := c.RenderForm.Settings()
 	if err != nil {
 		fmt.Println("Error getting render settings: ", err)
+		c.UpdateLocker.Unlock()
 		return
 	}
 
 	tabName, err := c.SelectedTab.Get()
 	if err != nil {
 		fmt.Println("Error getting selected tab: ", err)
+		c.UpdateLocker.Unlock()
 		return
 	}
 
@@ -149,6 +162,7 @@ func (c *Cleaner) UpdatePipeline() {
 	)
 	if err != nil {
 		fmt.Println("Error updating mask: ", err)
+		c.UpdateLocker.Unlock()
 		return
 	}
 	fNum := maskSettings.Frame
@@ -161,8 +175,12 @@ func (c *Cleaner) UpdatePipeline() {
 	img, err := c.Pipeline.ApplyMask(fNum, displaySettings, renderSettings)
 	if err != nil {
 		fmt.Println("Error applying mask: ", err)
+		c.UpdateLocker.Unlock()
 		return
 	}
 
-	c.Preview.SetImage(img)
+	fyne.Do(func() {
+		c.Preview.SetImage(img)
+		c.UpdateLocker.Unlock()
+	})
 }
