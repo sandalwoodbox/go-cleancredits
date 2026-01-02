@@ -16,18 +16,6 @@ func EmptyImage() image.Image {
 	return image.NewRGBA(image.Rect(0, 0, 1920, 1080))
 }
 
-func LoadFrame(vc *gocv.VideoCapture, n int, dst *gocv.Mat) error {
-	vc.Set(
-		gocv.VideoCapturePosFrames,
-		float64(n),
-	)
-	ok := vc.Read(dst)
-	if !ok {
-		return fmt.Errorf("invalid frame number: %d", n)
-	}
-	return nil
-}
-
 func RenderMask(mat gocv.Mat, dst *gocv.Mat, s settings.Mask) {
 	// wait := 1
 	// w := gocv.NewWindow("RenderMask")

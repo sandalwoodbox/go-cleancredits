@@ -14,6 +14,7 @@ import (
 
 type Pipeline struct {
 	VideoCapture  *gocv.VideoCapture
+	FrameCache    *FrameCache
 	VideoWidth    int
 	VideoHeight   int
 	DisplayWidth  int
@@ -40,45 +41,43 @@ type Pipeline struct {
 	MaskChanged bool
 }
 
-func NewPipeline(vc *gocv.VideoCapture, displayWidth, displayHeight int) Pipeline {
+func NewPipeline(vc *gocv.VideoCapture, displayWidth, displayHeight int) (Pipeline, error) {
 	w := int(vc.Get(gocv.VideoCaptureFrameWidth))
 	h := int(vc.Get(gocv.VideoCaptureFrameHeight))
+	cache, err := NewFrameCache(vc)
+	if err != nil {
+		return Pipeline{}, fmt.Errorf("creating frame cache: %v", err)
+	}
 	return Pipeline{
 		VideoCapture:  vc,
+		FrameCache:    cache,
 		VideoWidth:    w,
 		VideoHeight:   h,
 		DisplayWidth:  displayWidth,
 		DisplayHeight: displayHeight,
-	}
+	}, nil
 }
 
 func (p *Pipeline) UpdateMask(ms settings.Mask, drawSettings settings.Draw) error {
 	maskFrameChanged := ms.Frame != p.MaskSettings.Frame || p.MaskFrame == nil
 
-	var maskFrameMat gocv.Mat
-	defer maskFrameMat.Close()
-	var err error
 	if maskFrameChanged {
-		maskFrameMat = gocv.NewMat()
-		err := LoadFrame(p.VideoCapture, ms.Frame, &maskFrameMat)
+		i, err := p.FrameCache.LoadFrame(ms.Frame)
 		if err != nil {
 			return fmt.Errorf("loading frame %d/%s: %v\n",
 				ms.Frame,
 				strconv.FormatFloat(p.VideoCapture.Get(gocv.VideoCaptureFrameCount), 'f', -1, 64),
 				err)
 		}
-		i, err := maskFrameMat.ToImage()
-		if err != nil {
-			return fmt.Errorf("converting maskFrame to image: %v", err)
-		}
 		p.MaskFrame = &i
 		p.MaskSettings.Frame = ms.Frame
-	} else {
-		maskFrameMat, err = gocv.ImageToMatRGB(*p.MaskFrame)
-		if err != nil {
-			return fmt.Errorf("converting p.MaskFrame to mat: %v", err)
-		}
 	}
+	maskFrameMat, err := gocv.ImageToMatRGB(*p.MaskFrame)
+	if err != nil {
+		maskFrameMat.Close()
+		return fmt.Errorf("converting p.MaskFrame to mat: %v", err)
+	}
+	defer maskFrameMat.Close()
 
 	maskSettingsChanged := maskFrameChanged || p.maskSettingsChanged(ms) || p.Mask == nil
 	var maskMat gocv.Mat
@@ -110,27 +109,20 @@ func (p *Pipeline) UpdateMask(ms settings.Mask, drawSettings settings.Draw) erro
 
 func (p *Pipeline) ApplyMask(frame int, ds settings.Display, rs settings.Render) (image.Image, error) {
 	frameChanged := frame != p.DisplayFrameNumber || p.DisplayFrame == nil
-	var displayFrameMat gocv.Mat
-	defer displayFrameMat.Close()
-	var err error
 	if frameChanged {
-		displayFrameMat = gocv.NewMat()
-		err = LoadFrame(p.VideoCapture, frame, &displayFrameMat)
+		i, err := p.FrameCache.LoadFrame(frame)
 		if err != nil {
 			return nil, fmt.Errorf("loading frame: %v", err)
 		}
-		i, err := displayFrameMat.ToImage()
-		if err != nil {
-			return nil, fmt.Errorf("converting displayFrame to image: %v", err)
-		}
 		p.DisplayFrame = &i
 		p.DisplayFrameNumber = frame
-	} else {
-		displayFrameMat, err = gocv.ImageToMatRGB(*p.DisplayFrame)
-		if err != nil {
-			return nil, fmt.Errorf("converting p.DisplayFrame to mat: %v", err)
-		}
 	}
+	displayFrameMat, err := gocv.ImageToMatRGB(*p.DisplayFrame)
+	if err != nil {
+		displayFrameMat.Close()
+		return nil, fmt.Errorf("converting p.DisplayFrame to mat: %v", err)
+	}
+	defer displayFrameMat.Close()
 
 	modeChanged := frameChanged || p.DisplaySettings.Mode != ds.Mode || p.MaskChanged || p.Display == nil || (ds.Mode == display.ViewPreview && rs.InpaintRadius != p.RenderSettings.InpaintRadius)
 	var displayMat gocv.Mat

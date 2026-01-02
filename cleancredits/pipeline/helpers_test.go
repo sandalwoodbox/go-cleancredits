@@ -285,7 +285,7 @@ func TestRenderMask_horses(t *testing.T) {
 			want:       "unusual_numbers.png",
 		},
 		{
-			name:       "input mask",
+			name:       "frame mask",
 			hueMin:     -5,
 			hueMax:     200,
 			satMin:     -10,
@@ -306,9 +306,13 @@ func TestRenderMask_horses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error loading video file: %v", err)
 	}
-	input := gocv.NewMat()
-	defer input.Close()
-	LoadFrame(vc, 0, &input)
+	frame := gocv.NewMat()
+	defer frame.Close()
+	vc.Set(gocv.VideoCapturePosFrames, 0)
+	ok := vc.Read(&frame)
+	if !ok {
+		t.Fatalf("Error loading frame: %v", err)
+	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -327,7 +331,7 @@ func TestRenderMask_horses(t *testing.T) {
 			}
 			got := gocv.NewMat()
 			defer got.Close()
-			RenderMask(input, &got, ms)
+			RenderMask(frame, &got, ms)
 
 			if tc.inputMask != "" {
 				m := gocv.IMRead(

@@ -4,6 +4,7 @@ go 1.25
 
 require (
 	fyne.io/fyne/v2 v2.7.1
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	gocv.io/x/gocv v0.42.0
 )
 

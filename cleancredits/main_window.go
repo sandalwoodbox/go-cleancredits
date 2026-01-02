@@ -43,7 +43,12 @@ func openVideo(w fyne.Window) {
 			w.Close()
 			return
 		}
-		c := cleaner.New(vc, w)
+		c, err := cleaner.New(vc, w)
+		if err != nil {
+			fmt.Println("Error building interface: ", err)
+			w.Close()
+			return
+		}
 		w.SetContent(c.Container)
 	}, w)
 }

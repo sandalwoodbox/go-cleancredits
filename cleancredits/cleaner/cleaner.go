@@ -36,17 +36,23 @@ type Cleaner struct {
 
 	UpdateChannel chan struct{}
 	UpdateLocker  *sync.Mutex
+	OnMaskUpdate  func()
+	ApplyChannel  chan struct{}
+	ApplyLocker   *sync.Mutex
 	Pipeline      *pipeline.Pipeline
 	Preview       preview.Preview
 }
 
-func New(vc *gocv.VideoCapture, w fyne.Window) Cleaner {
+func New(vc *gocv.VideoCapture, w fyne.Window) (Cleaner, error) {
 	videoWidth := int(vc.Get(gocv.VideoCaptureFrameWidth))
 	videoHeight := int(vc.Get(gocv.VideoCaptureFrameHeight))
 	frameCount := int(vc.Get(gocv.VideoCaptureFrameCount))
 	displayWidth := 720
 	displayHeight := 480
-	p := pipeline.NewPipeline(vc, displayWidth, displayHeight)
+	p, err := pipeline.NewPipeline(vc, displayWidth, displayHeight)
+	if err != nil {
+		return Cleaner{}, fmt.Errorf("building pipeline: %v", err)
+	}
 	c := Cleaner{
 		VideoCapture:  vc,
 		MaskForm:      mask.NewForm(frameCount, videoWidth, videoHeight),
@@ -55,6 +61,8 @@ func New(vc *gocv.VideoCapture, w fyne.Window) Cleaner {
 		SelectedTab:   binding.NewString(),
 		UpdateChannel: make(chan struct{}),
 		UpdateLocker:  &sync.Mutex{},
+		ApplyChannel:  make(chan struct{}),
+		ApplyLocker:   &sync.Mutex{},
 		Pipeline:      &p,
 		Preview:       preview.NewPreview(displayWidth, displayHeight),
 	}
@@ -81,7 +89,7 @@ func New(vc *gocv.VideoCapture, w fyne.Window) Cleaner {
 
 	c.Container = container.New(layout.NewHBoxLayout(), left, right)
 
-	// Update pipeline & preview when forms change
+	// Update mask when mask/draw forms change
 	scheduleUpdate := func() {
 		select {
 		case c.UpdateChannel <- struct{}{}:
@@ -96,7 +104,7 @@ func New(vc *gocv.VideoCapture, w fyne.Window) Cleaner {
 			// Use another goroutine here to ensure UpdateChannel is consumed & unblocked
 			// immediately.
 			go func() {
-				c.UpdatePipeline()
+				c.UpdateMask()
 			}()
 		}
 	}()
@@ -104,8 +112,30 @@ func New(vc *gocv.VideoCapture, w fyne.Window) Cleaner {
 	c.SelectedTab.AddListener(scheduleUpdateListener)
 	c.MaskForm.OnChange(scheduleUpdate)
 	c.DrawForm.OnChange(scheduleUpdate)
-	c.DisplayForm.OnChange(scheduleUpdate)
-	c.RenderForm.OnChange(scheduleUpdate)
+
+	// Update preview when display/render forms change (or mask update completes)
+	scheduleApply := func() {
+		select {
+		case c.ApplyChannel <- struct{}{}:
+			// fmt.Println("Apply scheduled")
+		default:
+			// fmt.Println("Apply already scheduled")
+		}
+	}
+	go func() {
+		for range c.ApplyChannel {
+			c.ApplyLocker.Lock()
+			// Use another goroutine here to ensure ApplyChannel is consumed & unblocked
+			// immediately.
+			go func() {
+				c.ApplyMask()
+			}()
+		}
+	}()
+	c.OnMaskUpdate = scheduleApply
+	c.DisplayForm.OnChange(scheduleApply)
+	c.RenderForm.OnChange(scheduleApply)
+
 	// Change draw tab frame when mask frame changes (but not vice versa)
 	c.MaskForm.Frame.AddListener(binding.NewDataListener(func() {
 		f, err := c.MaskForm.Frame.Get()
@@ -120,39 +150,18 @@ func New(vc *gocv.VideoCapture, w fyne.Window) Cleaner {
 		}
 	}))
 
-	return c
+	return c, nil
 }
-
-func (c *Cleaner) UpdatePipeline() {
+func (c *Cleaner) UpdateMask() {
+	defer c.UpdateLocker.Unlock()
 	maskSettings, err := c.MaskForm.Settings()
 	if err != nil {
 		fmt.Println("Error getting mask settings: ", err)
-		c.UpdateLocker.Unlock()
 		return
 	}
 	drawSettings, err := c.DrawForm.Settings()
 	if err != nil {
 		fmt.Println("Error getting draw settings: ", err)
-		c.UpdateLocker.Unlock()
-		return
-	}
-	displaySettings, err := c.DisplayForm.Settings()
-	if err != nil {
-		fmt.Println("Error getting display settings: ", err)
-		c.UpdateLocker.Unlock()
-		return
-	}
-	renderSettings, err := c.RenderForm.Settings()
-	if err != nil {
-		fmt.Println("Error getting render settings: ", err)
-		c.UpdateLocker.Unlock()
-		return
-	}
-
-	tabName, err := c.SelectedTab.Get()
-	if err != nil {
-		fmt.Println("Error getting selected tab: ", err)
-		c.UpdateLocker.Unlock()
 		return
 	}
 
@@ -162,25 +171,53 @@ func (c *Cleaner) UpdatePipeline() {
 	)
 	if err != nil {
 		fmt.Println("Error updating mask: ", err)
-		c.UpdateLocker.Unlock()
 		return
 	}
-	fNum := maskSettings.Frame
+	c.OnMaskUpdate()
+}
+
+func (c *Cleaner) ApplyMask() {
+	// Don't proceed unless the mask has been rendered at least once.
+	if c.Pipeline.MaskWithOverrides == nil {
+		c.ApplyLocker.Unlock()
+		return
+	}
+	displaySettings, err := c.DisplayForm.Settings()
+	if err != nil {
+		fmt.Println("Error getting display settings: ", err)
+		return
+	}
+	renderSettings, err := c.RenderForm.Settings()
+	if err != nil {
+		fmt.Println("Error getting render settings: ", err)
+		c.ApplyLocker.Unlock()
+		return
+	}
+
+	tabName, err := c.SelectedTab.Get()
+	if err != nil {
+		fmt.Println("Error getting selected tab: ", err)
+		c.ApplyLocker.Unlock()
+		return
+	}
+	var fNum int
 	switch tabName {
-	case DrawTabName:
-		fNum = drawSettings.Frame
 	case RenderTabName:
 		fNum = renderSettings.Frame
+	case DrawTabName:
+		fNum, err = c.DrawForm.Frame.Get()
+	default: // MaskTabName
+		fNum, err = c.MaskForm.Frame.Get()
 	}
 	img, err := c.Pipeline.ApplyMask(fNum, displaySettings, renderSettings)
 	if err != nil {
 		fmt.Println("Error applying mask: ", err)
-		c.UpdateLocker.Unlock()
+		c.ApplyLocker.Unlock()
 		return
 	}
 
 	fyne.Do(func() {
 		c.Preview.SetImage(img)
-		c.UpdateLocker.Unlock()
+		c.ApplyLocker.Unlock()
 	})
 }
