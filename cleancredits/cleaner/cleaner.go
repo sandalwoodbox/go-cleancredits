@@ -63,7 +63,7 @@ func New(vc *gocv.VideoCapture, w fyne.Window) (Cleaner, error) {
 		UpdateLocker:  &sync.Mutex{},
 		ApplyChannel:  make(chan struct{}),
 		ApplyLocker:   &sync.Mutex{},
-		Pipeline:      &p,
+		Pipeline:      p,
 		Preview:       preview.NewPreview(displayWidth, displayHeight),
 	}
 	c.RenderForm = render.NewForm(frameCount, c.Pipeline, w)

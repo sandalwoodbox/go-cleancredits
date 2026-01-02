@@ -174,7 +174,7 @@ func (f *Form) Render(path string) {
 		fyne.Do(func() {
 			f.ProgressLabel.SetText(fmt.Sprintf("%d/%d loading frame...", i, rs.EndFrame))
 		})
-		img, err := f.Pipeline.FrameCache.LoadFrame(i)
+		mat, err := f.Pipeline.FrameCache.LoadFrame(i)
 		if err != nil {
 			fyne.Do(func() {
 				f.ProgressLabel.SetText(err.Error())
@@ -186,22 +186,15 @@ func (f *Form) Render(path string) {
 			f.ProgressLabel.SetText(fmt.Sprintf("%d/%d rendering frame...", i, rs.EndFrame))
 		})
 
-		m, err := gocv.ImageToMatRGB(img)
-		if err != nil {
-			fyne.Do(func() {
-				f.ProgressLabel.SetText(err.Error())
-			})
-			return
-		}
 		masked := gocv.NewMat()
-		gocv.Inpaint(m, mask, &masked, float32(rs.InpaintRadius), gocv.Telea)
+		gocv.Inpaint(mat, mask, &masked, float32(rs.InpaintRadius), gocv.Telea)
 		fyne.Do(func() {
 			f.ProgressBar.SetValue(f.ProgressBar.Value + 1)
 			f.ProgressLabel.SetText(fmt.Sprintf("%d/%d saving frame...", i, rs.EndFrame))
 		})
 
 		out.Write(masked)
-		m.Close()
+		mat.Close()
 		masked.Close()
 		fyne.Do(func() {
 			f.ProgressBar.SetValue(f.ProgressBar.Value + 1)

@@ -17,11 +17,6 @@ func EmptyImage() image.Image {
 }
 
 func RenderMask(mat gocv.Mat, dst *gocv.Mat, s settings.Mask) {
-	// wait := 1
-	// w := gocv.NewWindow("RenderMask")
-	// w.IMShow(mat)
-	// w.SetWindowTitle("RenderMask - mat")
-	// w.WaitKey(wait)
 	if s.CropTop > s.CropBottom {
 		s.CropTop, s.CropBottom = s.CropBottom, s.CropTop
 	}
@@ -33,14 +28,9 @@ func RenderMask(mat gocv.Mat, dst *gocv.Mat, s settings.Mask) {
 	s.CropLeft = utils.ClampInt(s.CropLeft, 0, mat.Cols())
 	s.CropRight = utils.ClampInt(s.CropRight, 0, mat.Cols())
 
-	// fmt.Printf("mat dims: %d x %d, %d\n", mat.Cols(), mat.Rows(), mat.Channels())
 	frameHSV := gocv.NewMat()
 	defer frameHSV.Close()
 	gocv.CvtColor(mat, &frameHSV, gocv.ColorBGRToHSV)
-	// fmt.Printf("frameHSV dims: %d x %d, %d\n", frameHSV.Cols(), frameHSV.Rows(), frameHSV.Channels())
-	// w.IMShow(frameHSV)
-	// w.SetWindowTitle("RenderMask - frameHSV")
-	// w.WaitKey(wait)
 
 	hsvMask := gocv.NewMat()
 	defer hsvMask.Close()
@@ -50,10 +40,6 @@ func RenderMask(mat gocv.Mat, dst *gocv.Mat, s settings.Mask) {
 		gocv.NewScalar(float64(s.HueMax), float64(s.SatMax), float64(s.ValMax), 0),
 		&hsvMask,
 	)
-	// fmt.Printf("hsvMask dims: %d x %d, %d\n", hsvMask.Cols(), hsvMask.Rows(), hsvMask.Channels())
-	// w.IMShow(hsvMask)
-	// w.SetWindowTitle("RenderMask - hsvMask")
-	// w.WaitKey(wait)
 
 	var grown gocv.Mat
 	if s.Grow > 0 {
@@ -65,11 +51,8 @@ func RenderMask(mat gocv.Mat, dst *gocv.Mat, s settings.Mask) {
 		grown = hsvMask.Clone()
 	}
 	defer grown.Close()
-	// fmt.Printf("grown dims: %d x %d, %d\n", grown.Cols(), grown.Rows(), grown.Channels())
-	// w.IMShow(grown)
-	// w.SetWindowTitle("RenderMask - grown")
-	// w.WaitKey(wait)
 
+	// TODO: This is the slowest part of UpdateMask. Can it be faster / cached?
 	bboxMask := gocv.Zeros(hsvMask.Rows(), hsvMask.Cols(), gocv.MatTypeCV8U)
 	defer bboxMask.Close()
 	for x := s.CropLeft; x < s.CropRight; x++ {
@@ -77,18 +60,8 @@ func RenderMask(mat gocv.Mat, dst *gocv.Mat, s settings.Mask) {
 			bboxMask.SetUCharAt(y, x, 255)
 		}
 	}
-	// fmt.Printf("Crop: l%d, t%d, r%d, b%d\n", s.CropLeft, s.CropTop, s.CropRight, s.CropBottom)
-	// fmt.Printf("bboxMask dims: %d x %d, %d\n", bboxMask.Cols(), bboxMask.Rows(), bboxMask.Channels())
-	// w.IMShow(bboxMask)
-	// w.SetWindowTitle("RenderMask - bboxMask")
-	// w.WaitKey(wait)
 	gocv.BitwiseAnd(grown, bboxMask, dst)
 	gocv.BitwiseAndWithMask(grown, grown, dst, bboxMask)
-
-	// fmt.Printf("dst dims: %d x %d, %d\n", dst.Cols(), dst.Rows(), dst.Channels())
-	// w.IMShow(*dst)
-	// w.SetWindowTitle("RenderMask - dst")
-	// w.WaitKey(wait)
 }
 
 func CombineMasks(mode string, top gocv.Mat, bottom, dst *gocv.Mat) {

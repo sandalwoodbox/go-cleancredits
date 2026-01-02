@@ -2,7 +2,6 @@ package pipeline
 
 import (
 	"fmt"
-	"image"
 	"sync"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -14,11 +13,17 @@ import (
 type FrameCache struct {
 	vc     *gocv.VideoCapture
 	locker *sync.Mutex
-	cache  *lru.Cache[int, image.Image]
+	cache  *lru.Cache[int, gocv.Mat]
+	debug  bool
 }
 
-func NewFrameCache(vc *gocv.VideoCapture) (*FrameCache, error) {
-	cache, err := lru.New[int, image.Image](128)
+func NewFrameCache(vc *gocv.VideoCapture, debug bool) (*FrameCache, error) {
+	cache, err := lru.NewWithEvict(10, func(k int, v gocv.Mat) {
+		if debug {
+			fmt.Printf("Evicted frame %d. Ptr: %v", k, v.Ptr())
+		}
+		v.Close()
+	})
 	if err != nil {
 		return nil, fmt.Errorf("creating cache: %v", err)
 	}
@@ -26,32 +31,30 @@ func NewFrameCache(vc *gocv.VideoCapture) (*FrameCache, error) {
 		vc:     vc,
 		locker: &sync.Mutex{},
 		cache:  cache,
+		debug:  debug,
 	}, nil
 }
 
-func (fc *FrameCache) LoadFrame(n int) (image.Image, error) {
-	fmt.Println("Loading frame: ", n)
-	img, ok := fc.cache.Get(n)
+func (fc *FrameCache) LoadFrame(n int) (gocv.Mat, error) {
+	fc.locker.Lock()
+	mat, ok := fc.cache.Get(n)
 	if !ok {
-		fmt.Println("Cache miss for frame: ", n)
-		m := gocv.NewMat()
-		defer m.Close()
-		fc.locker.Lock()
+		mat = gocv.NewMat()
 		fc.vc.Set(
 			gocv.VideoCapturePosFrames,
 			float64(n),
 		)
-		ok := fc.vc.Read(&m)
-		fc.locker.Unlock()
+		ok := fc.vc.Read(&mat)
 		if !ok {
-			return nil, fmt.Errorf("invalid frame number: %d", n)
+			return gocv.NewMat(), fmt.Errorf("invalid frame number: %d", n)
 		}
-		var err error
-		img, err = m.ToImage()
-		if err != nil {
-			return nil, fmt.Errorf("converting to image: %v", err)
+		fc.cache.Add(n, mat)
+		if fc.debug {
+			fmt.Printf("Added frame %d. Ptr: %v\n", n, mat.Ptr())
 		}
-		fc.cache.Add(n, img)
+	} else if fc.debug {
+		fmt.Printf("Loaded frame %d. Ptr: %v\n", n, mat.Ptr())
 	}
-	return img, nil
+	fc.locker.Unlock()
+	return mat, nil
 }
