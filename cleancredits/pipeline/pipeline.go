@@ -148,13 +148,16 @@ func (p *Pipeline) ApplyMask(frame int, ds settings.Display, rs settings.Render)
 
 	zoomChanged := modeChanged || p.zoomChanged(ds)
 	if zoomChanged {
+		p.Zoomed.Close()
 		zf := display.ZoomLevelMap[ds.Zoom]
 		if zf == 0 {
 			zf = math.Min(float64(p.DisplayWidth)/float64(p.VideoWidth), float64(p.DisplayHeight)/float64(p.VideoHeight))
 		}
 		r := ZoomCropRectangle(zf, ds.AnchorX, ds.AnchorY, p.VideoWidth, p.VideoHeight, p.DisplayWidth, p.DisplayHeight)
 		p.Zoomed = gocv.NewMatWithSize(p.DisplayHeight, p.DisplayWidth, gocv.MatTypeCV8UC3)
-		gocv.Resize(p.Display.Region(r), &p.Zoomed, image.Point{}, zf, zf, gocv.InterpolationNearestNeighbor)
+		rio := p.Display.Region(r)
+		defer rio.Close()
+		gocv.Resize(rio, &p.Zoomed, image.Point{}, zf, zf, gocv.InterpolationNearestNeighbor)
 	}
 	zoomed, err := p.Zoomed.ToImage()
 	if err != nil {

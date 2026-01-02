@@ -170,6 +170,8 @@ func (f *Form) Render(path string) {
 	defer mask.Close()
 
 	out, err := gocv.VideoWriterFile(path, codec, fps, f.Pipeline.VideoWidth, f.Pipeline.VideoHeight, true)
+	masked := gocv.NewMat()
+	defer masked.Close()
 	for i := rs.StartFrame; i <= rs.EndFrame; i++ {
 		fyne.Do(func() {
 			f.ProgressLabel.SetText(fmt.Sprintf("%d/%d loading frame...", i, rs.EndFrame))
@@ -186,7 +188,6 @@ func (f *Form) Render(path string) {
 			f.ProgressLabel.SetText(fmt.Sprintf("%d/%d rendering frame...", i, rs.EndFrame))
 		})
 
-		masked := gocv.NewMat()
 		gocv.Inpaint(mat, mask, &masked, float32(rs.InpaintRadius), gocv.Telea)
 		fyne.Do(func() {
 			f.ProgressBar.SetValue(f.ProgressBar.Value + 1)
@@ -194,8 +195,6 @@ func (f *Form) Render(path string) {
 		})
 
 		out.Write(masked)
-		mat.Close()
-		masked.Close()
 		fyne.Do(func() {
 			f.ProgressBar.SetValue(f.ProgressBar.Value + 1)
 		})
