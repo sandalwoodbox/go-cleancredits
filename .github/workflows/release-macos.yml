@@ -1,0 +1,67 @@
+name: MacOS Build & Test
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    runs-on: macos-15-intel
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.25
+
+      - name: Install Go dependencies
+        run: |
+          go get .
+
+      - name: Install OpenCV
+        run: |
+          brew install opencv
+
+      - name: Verify OpenCV
+        run: |
+          cd "$(go env GOPATH)/pkg/mod/gocv.io/x/gocv@v0.42.0"
+          go run ./cmd/version/main.go
+
+      - name: Build
+        run: |
+          go build -v ./...
+
+      - name: Test
+        run: |
+          go test -v ./...
+
+      - uses: actions/upload-artifact@v6
+        if: ${{ success() || failure() }}
+        with:
+          name: artifacts
+          if-no-files-found: ignore
+          path: artifacts/
+
+      - name: Install fyne packaging tool
+        run: |
+          go install fyne.io/tools/cmd/fyne@latest
+
+      - name: Package
+        run: |
+          fyne package -os darwin -release
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            cleancredits.app

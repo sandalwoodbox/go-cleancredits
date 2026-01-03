@@ -1,0 +1,69 @@
+name: Ubuntu Build & Test
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.25
+
+      - name: Install Go dependencies
+        run: |
+          go get .
+
+      - name: Install fyne dev dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install libgl1-mesa-dev xorg-dev libxkbcommon-dev
+
+      - name: Install & verify OpenCV
+        run: |
+          cd "$(go env GOPATH)/pkg/mod/gocv.io/x/gocv@v0.42.0"
+          make install
+
+      - name: Build
+        run: |
+          go build -v ./...
+
+      - name: Test
+        run: |
+          go test -v ./...
+
+      - uses: actions/upload-artifact@v6
+        if: ${{ success() || failure() }}
+        with:
+          name: artifacts
+          if-no-files-found: ignore
+          path: artifacts/
+
+      - name: Install fyne packaging tool
+        run: |
+          go install fyne.io/tools/cmd/fyne@latest
+
+      - name: Package
+        run: |
+          fyne package -os linux -release
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            cleancredits.tar.gz
+
