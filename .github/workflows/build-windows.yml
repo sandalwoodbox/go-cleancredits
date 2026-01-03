@@ -24,6 +24,20 @@ jobs:
         with:
           go-version: 1.25
 
+      - name: Install Go dependencies
+        run: |
+          go get .
+
+      - name: Install OpenCV
+        run: |
+          chdir %GOPATH%\src\gocv.io\x\gocv
+          win_build_opencv.cmd
+
+      - name: Verify OpenCV
+        run: |
+          chdir %GOPATH%\src\gocv.io\x\gocv
+          go run cmd\version\main.go
+
       - name: Build
         run: |
           go build -v ./...

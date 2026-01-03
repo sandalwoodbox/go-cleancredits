@@ -27,6 +27,11 @@ jobs:
       - name: Install libx11-dev
         run: sudo apt install libx11-dev
 
+      - name: Install & verify OpenCV
+        run: |
+          cd $GOPATH/src/gocv.io/x/gocv
+          make install
+
       - name: Build
         run: |
           go build -v ./...

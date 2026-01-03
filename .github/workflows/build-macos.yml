@@ -24,6 +24,16 @@ jobs:
         with:
           go-version: 1.25
 
+      - name: Install OpenCV
+        run: |
+          brew install pkgconfig
+          brew install opencv
+
+      - name: Verify OpenCV
+        run: |
+          cd $GOPATH/src/gocv.io/x/gocv
+          go run ./cmd/version/main.go
+
       - name: Build
         run: |
           go build -v ./...
