@@ -30,7 +30,7 @@ jobs:
 
       - name: Verify OpenCV
         run: |
-          cd $(go env GOPATH)/src/gocv.io/x/gocv
+          cd "$(go env GOPATH)/pkg/mod/gocv.io/x/gocv@v0.42.0"
           go run ./cmd/version/main.go
 
       - name: Build
