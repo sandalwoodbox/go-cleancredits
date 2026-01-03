@@ -59,6 +59,7 @@ jobs:
       - name: Package
         run: |
           fyne package -os darwin -release
+          ls
 
       - name: Release
         uses: softprops/action-gh-release@v2
