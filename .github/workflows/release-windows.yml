@@ -1,4 +1,4 @@
-name: Windows Build & Test
+name: Windows Release
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
