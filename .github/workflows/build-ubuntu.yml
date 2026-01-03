@@ -28,8 +28,8 @@ jobs:
         run: |
           go get .
 
-      - name: Install libx11-dev
-        run: sudo apt install libx11-dev
+      - name: Install fyne dev dependencies
+        run: sudo apt install libgl1-mesa-dev xorg-dev libxkbcommon-dev
 
       - name: Install & verify OpenCV
         run: |
