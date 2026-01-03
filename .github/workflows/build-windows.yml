@@ -47,7 +47,7 @@ jobs:
           go test -v ./...
 
       - uses: actions/upload-artifact@v6
-        if ${{ success() || failure() }}
+        if: ${{ success() || failure() }}
         with:
           name: artifacts
           if-no-files-found: ignore
