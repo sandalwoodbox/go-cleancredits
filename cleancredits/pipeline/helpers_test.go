@@ -154,16 +154,17 @@ func compareMats(t *testing.T, got, want gocv.Mat) {
 			t.Errorf("%s: similarity %g\n", name, similarity)
 		}
 
-		gw := gocv.NewWindow(fmt.Sprintf("%s got", t.Name()))
-		defer gw.Close()
-		gw.ResizeWindow(1920, 1080)
-		gw.IMShow(got)
-		gw.WaitKey(1)
-		ww := gocv.NewWindow(fmt.Sprintf("%s want", t.Name()))
-		defer ww.Close()
-		ww.ResizeWindow(1920, 1080)
-		ww.IMShow(want)
-		ww.WaitKey(5000)
+		// These are useful for local debugging but don't work in CI
+		// gw := gocv.NewWindow(fmt.Sprintf("%s got", t.Name()))
+		// defer gw.Close()
+		// gw.ResizeWindow(1920, 1080)
+		// gw.IMShow(got)
+		// gw.WaitKey(1)
+		// ww := gocv.NewWindow(fmt.Sprintf("%s want", t.Name()))
+		// defer ww.Close()
+		// ww.ResizeWindow(1920, 1080)
+		// ww.IMShow(want)
+		// ww.WaitKey(5000)
 	}
 }
 
