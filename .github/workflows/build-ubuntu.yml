@@ -29,7 +29,9 @@ jobs:
           go get .
 
       - name: Install fyne dev dependencies
-        run: sudo apt install libgl1-mesa-dev xorg-dev libxkbcommon-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install libgl1-mesa-dev xorg-dev libxkbcommon-dev
 
       - name: Install & verify OpenCV
         run: |
