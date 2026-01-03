@@ -31,7 +31,7 @@ jobs:
       - name: Install OpenCV
         run: |
           chdir "$(go env GOPATH)\pkg\mod\gocv.io\x\gocv@v0.42.0"
-          win_build_opencv.cmd
+          .\win_build_opencv.cmd
 
       - name: Verify OpenCV
         run: |
