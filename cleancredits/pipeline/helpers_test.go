@@ -3,6 +3,7 @@ package pipeline
 import (
 	"fmt"
 	"image"
+	"os"
 	"path"
 	"reflect"
 	"strings"
@@ -152,6 +153,17 @@ func compareMats(t *testing.T, got, want gocv.Mat) {
 			gotHash.Close()
 			wantHash.Close()
 			t.Errorf("%s: similarity %g\n", name, similarity)
+		}
+
+		err = os.MkdirAll("../../artifacts", 0755)
+		if err != nil {
+			t.Errorf("Error creating artifacts dir: %v", err)
+		} else {
+			fName := strings.Replace(t.Name(), "/", "_", -1)
+			ok := gocv.IMWrite(fmt.Sprintf("../../artifacts/%s.png", fName), got)
+			if !ok {
+				t.Errorf("Failed to write artifact: artifacts/%s.png", fName)
+			}
 		}
 
 		// These are useful for local debugging but don't work in CI
