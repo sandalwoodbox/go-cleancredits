@@ -1,4 +1,4 @@
-name: Go Build & Test
+name: Windows Build & Test
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
