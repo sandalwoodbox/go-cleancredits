@@ -30,12 +30,12 @@ jobs:
 
       - name: Install OpenCV
         run: |
-          chdir %GOPATH%\src\gocv.io\x\gocv
+          chdir ${env:GOPATH}\src\gocv.io\x\gocv
           win_build_opencv.cmd
 
       - name: Verify OpenCV
         run: |
-          chdir %GOPATH%\src\gocv.io\x\gocv
+          chdir ${env:GOPATH}\src\gocv.io\x\gocv
           go run cmd\version\main.go
 
       - name: Build
