@@ -31,6 +31,7 @@ jobs:
       - name: Install OpenCV
         run: |
           chdir "$(go env GOPATH)\pkg\mod\gocv.io\x\gocv@v0.42.0"
+          $env:GOPATH = go env GOPATH
           .\win_build_opencv.cmd
 
       - name: Verify OpenCV
@@ -52,4 +53,3 @@ jobs:
           name: artifacts
           if-no-files-found: ignore
           path: artifacts/
-
