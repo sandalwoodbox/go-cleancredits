@@ -57,7 +57,7 @@ func New(vc *gocv.VideoCapture, w fyne.Window) (Cleaner, error) {
 		VideoCapture:  vc,
 		MaskForm:      mask.NewForm(frameCount, videoWidth, videoHeight),
 		DrawForm:      draw.NewForm(frameCount),
-		DisplayForm:   display.NewForm(videoWidth, videoHeight),
+		DisplayForm:   display.NewForm(videoWidth, videoHeight, displayWidth, displayHeight),
 		SelectedTab:   binding.NewString(),
 		UpdateChannel: make(chan struct{}),
 		UpdateLocker:  &sync.Mutex{},

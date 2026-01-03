@@ -2,6 +2,8 @@ package display
 
 import (
 	"fmt"
+	"maps"
+	"math"
 	"slices"
 
 	"fyne.io/fyne/v2"
@@ -24,7 +26,7 @@ const (
 
 const ZoomFit = "Fit"
 
-var ZoomLevelMap = map[string]float64{
+var ZoomLevelToFactor = map[string]float64{
 	ZoomFit: 0,
 	"10%":   .10,
 	"25%":   .25,
@@ -35,6 +37,18 @@ var ZoomLevelMap = map[string]float64{
 	"300%":  3,
 	"400%":  4,
 	"500%":  5,
+}
+var ZoomFactorToLevel = map[float64]string{
+	0:   ZoomFit,
+	.10: "10%",
+	.25: "25%",
+	.5:  "50%",
+	1:   "100%",
+	1.5: "150%",
+	2:   "200%",
+	3:   "300%",
+	4:   "400%",
+	5:   "500%",
 }
 
 var ZoomLevels = []string{
@@ -51,7 +65,10 @@ var ZoomLevels = []string{
 }
 
 type Form struct {
-	Container *fyne.Container
+	Container     *fyne.Container
+	DisplayWidth  int
+	DisplayHeight int
+	FitZoomFactor float64
 
 	Mode    binding.String
 	Zoom    binding.String
@@ -59,12 +76,15 @@ type Form struct {
 	AnchorY binding.Int
 }
 
-func NewForm(width, height int) Form {
+func NewForm(videoWidth, videoHeight, displayWidth, displayHeight int) Form {
 	f := Form{
-		Mode:    binding.NewString(),
-		Zoom:    binding.NewString(),
-		AnchorX: binding.NewInt(),
-		AnchorY: binding.NewInt(),
+		DisplayWidth:  displayWidth,
+		DisplayHeight: displayHeight,
+		FitZoomFactor: math.Min(float64(displayWidth)/float64(videoWidth), float64(displayHeight)/float64(videoHeight)),
+		Mode:          binding.NewString(),
+		Zoom:          binding.NewString(),
+		AnchorX:       binding.NewInt(),
+		AnchorY:       binding.NewInt(),
 	}
 	err := f.Mode.Set(ViewMask)
 	if err != nil {
@@ -74,16 +94,16 @@ func NewForm(width, height int) Form {
 	if err != nil {
 		fmt.Println("Error setting zoom: ", err)
 	}
-	err = f.AnchorX.Set(width / 2)
+	err = f.AnchorX.Set(videoWidth / 2)
 	if err != nil {
 		fmt.Println("Error setting anchorX: ", err)
 	}
-	err = f.AnchorY.Set(height / 2)
+	err = f.AnchorY.Set(videoHeight / 2)
 	if err != nil {
 		fmt.Println("Error setting anchorY: ", err)
 	}
-	anchorXEntry := ccWidget.NewIntEntryWithData(0, width, f.AnchorX)
-	anchorYEntry := ccWidget.NewIntEntryWithData(0, height, f.AnchorY)
+	anchorXEntry := ccWidget.NewIntEntryWithData(0, videoWidth, f.AnchorX)
+	anchorYEntry := ccWidget.NewIntEntryWithData(0, videoHeight, f.AnchorY)
 	f.Container =
 		container.New(
 			layout.NewHBoxLayout(),
@@ -128,6 +148,10 @@ func (f Form) Settings() (settings.Display, error) {
 	if err != nil {
 		return settings.Display{}, fmt.Errorf("getting zoom: %v", err)
 	}
+	zf := ZoomLevelToFactor[zoom]
+	if zoom == ZoomFit {
+		zf = f.FitZoomFactor
+	}
 
 	anchorX, err := f.AnchorX.Get()
 	if err != nil {
@@ -140,44 +164,56 @@ func (f Form) Settings() (settings.Display, error) {
 	}
 	return settings.Display{
 		Mode:    mode,
-		Zoom:    zoom,
+		Zoom:    zf,
 		AnchorX: anchorX,
 		AnchorY: anchorY,
 	}, nil
 }
 
 func (f Form) ZoomIn() {
-	z, err := f.Zoom.Get()
+	zoom, err := f.Zoom.Get()
 	if err != nil {
 		fmt.Println("Error getting Zoom: ", err)
-	}
-	if z == ZoomFit {
-		fmt.Println("Zoom in/out from Fit not supported")
 		return
 	}
-	i := slices.Index(ZoomLevels, z)
-	if i < len(ZoomLevels)-1 {
-		err = f.Zoom.Set(ZoomLevels[i+1])
-		if err != nil {
-			fmt.Println("Error setting Zoom: ", err)
+	zf := ZoomLevelToFactor[zoom]
+	if zoom == ZoomFit {
+		zf = f.FitZoomFactor
+	}
+
+	// Return the first zoom level that the current zoom is smaller than.
+	for _, v := range slices.Sorted(maps.Keys(ZoomFactorToLevel)) {
+		if zf < v {
+			err = f.Zoom.Set(ZoomFactorToLevel[v])
+			if err != nil {
+				fmt.Println("Error setting Zoom: ", err)
+			}
+			return
 		}
 	}
 }
 
 func (f Form) ZoomOut() {
-	z, err := f.Zoom.Get()
+	zoom, err := f.Zoom.Get()
 	if err != nil {
 		fmt.Println("Error getting Zoom: ", err)
-	}
-	if z == ZoomFit {
-		fmt.Println("Zoom in/out from Fit not supported")
 		return
 	}
-	i := slices.Index(ZoomLevels, z)
-	if i > 1 {
-		err = f.Zoom.Set(ZoomLevels[i-1])
-		if err != nil {
-			fmt.Println("Error setting Zoom: ", err)
+	zf := ZoomLevelToFactor[zoom]
+	if zoom == ZoomFit {
+		zf = f.FitZoomFactor
+	}
+
+	// Return the first zoom level that the current zoom is larger than.
+	zfs := slices.Sorted(maps.Keys(ZoomFactorToLevel))
+	slices.Reverse(zfs)
+	for _, v := range zfs {
+		if zf > v || v == .1 {
+			err = f.Zoom.Set(ZoomFactorToLevel[v])
+			if err != nil {
+				fmt.Println("Error setting Zoom: ", err)
+			}
+			return
 		}
 	}
 }

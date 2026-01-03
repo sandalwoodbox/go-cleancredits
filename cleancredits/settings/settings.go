@@ -2,7 +2,7 @@ package settings
 
 type Display struct {
 	Mode    string
-	Zoom    string
+	Zoom    float64
 	AnchorX int
 	AnchorY int
 }

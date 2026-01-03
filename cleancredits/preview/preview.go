@@ -12,6 +12,8 @@ import (
 type Preview struct {
 	Image     *canvas.Image
 	Container *fyne.Container
+	Width     int
+	Height    int
 }
 
 func NewPreview(w, h int) Preview {
@@ -22,7 +24,9 @@ func NewPreview(w, h int) Preview {
 	img.SetMinSize(fyne.NewSize(float32(w), float32(h)))
 	p := Preview{
 		Image:     img,
-		Container: container.NewStack(img),
+		Container: container.NewCenter(img),
+		Width:     w,
+		Height:    h,
 	}
 
 	return p
@@ -30,5 +34,12 @@ func NewPreview(w, h int) Preview {
 
 func (p Preview) SetImage(img image.Image) {
 	p.Image.Image = img
+	r := img.Bounds()
+	if r.Dx() < p.Width && r.Dy() < p.Height {
+		p.Image.FillMode = canvas.ImageFillOriginal
+	} else {
+		p.Image.FillMode = canvas.ImageFillContain
+	}
+	p.Image.SetMinSize(fyne.NewSize(float32(p.Width), float32(p.Height)))
 	p.Image.Refresh()
 }

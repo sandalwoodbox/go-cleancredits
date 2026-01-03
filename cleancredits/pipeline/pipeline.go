@@ -3,7 +3,6 @@ package pipeline
 import (
 	"fmt"
 	"image"
-	"math"
 	"strconv"
 
 	"gocv.io/x/gocv"
@@ -58,7 +57,7 @@ func NewPipeline(vc *gocv.VideoCapture, displayWidth, displayHeight int) (*Pipel
 		MaskSettings:       settings.Mask{Frame: -1},
 		DrawSettings:       settings.Draw{Frame: -1},
 		RenderSettings:     settings.Render{Frame: -1},
-		DisplaySettings:    settings.Display{Zoom: "-1"},
+		DisplaySettings:    settings.Display{Zoom: -1},
 	}, nil
 }
 
@@ -149,15 +148,11 @@ func (p *Pipeline) ApplyMask(frame int, ds settings.Display, rs settings.Render)
 	zoomChanged := modeChanged || p.zoomChanged(ds)
 	if zoomChanged {
 		p.Zoomed.Close()
-		zf := display.ZoomLevelMap[ds.Zoom]
-		if zf == 0 {
-			zf = math.Min(float64(p.DisplayWidth)/float64(p.VideoWidth), float64(p.DisplayHeight)/float64(p.VideoHeight))
-		}
-		r := ZoomCropRectangle(zf, ds.AnchorX, ds.AnchorY, p.VideoWidth, p.VideoHeight, p.DisplayWidth, p.DisplayHeight)
+		r := ZoomCropRectangle(ds.Zoom, ds.AnchorX, ds.AnchorY, p.VideoWidth, p.VideoHeight, p.DisplayWidth, p.DisplayHeight)
 		p.Zoomed = gocv.NewMatWithSize(p.DisplayHeight, p.DisplayWidth, gocv.MatTypeCV8UC3)
 		rio := p.Display.Region(r)
 		defer rio.Close()
-		gocv.Resize(rio, &p.Zoomed, image.Point{}, zf, zf, gocv.InterpolationNearestNeighbor)
+		gocv.Resize(rio, &p.Zoomed, image.Point{}, ds.Zoom, ds.Zoom, gocv.InterpolationNearestNeighbor)
 	}
 	zoomed, err := p.Zoomed.ToImage()
 	if err != nil {
