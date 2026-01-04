@@ -44,13 +44,16 @@ jobs:
         run: |
           go build -v ./...
 
-      - name: Install fyne packaging tool
+      - name: Install packaging tools
         run: |
           go install fyne.io/tools/cmd/fyne@latest
+          brew install dylibbundler
 
       - name: Package
         run: |
           fyne package -os darwin -release
+          dylibbundler -od -b -x ./cleancredits.app/Contents/MacOS/go-cleancredits \
+            -d ./cleancredits.app/Contents/libs/
           zip -vr "cleancredits-${{ matrix.os }}-$(uname -m).app.zip" cleancredits.app/
           ls
 
