@@ -59,4 +59,4 @@ jobs:
         with:
           fail_on_unmatched_files: true
           files: |
-            cleancredits-${{ matrix.os }}-$(uname -m).app.zip
+            cleancredits-${{ matrix.os }}-*.app.zip
