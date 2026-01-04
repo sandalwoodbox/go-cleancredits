@@ -4,9 +4,18 @@ A tool for removing on-screen text from video
 
 ## Installation
 
+Navigate to the latest release at https://github.com/sandalwoodbox/go-cleancredits/releases
+and download the package for your platform. The package names represent the platform used for
+compiling the binary; there may be cross-compatibility. For example, I can run
+macos-15-intel-x86_64 on MacOS 12.
+
 ### From source
 
-Requirements: [git](https://git-scm.com/), [golang](https://go.dev/doc/install)
+Requirements:
+
+- [git](https://git-scm.com/)
+- [golang](https://go.dev/doc/install)
+- OpenCV ([MacOS](https://gocv.io/getting-started/macos/), [Linux](https://gocv.io/getting-started/linux/), [Windows](https://gocv.io/getting-started/windows/))
 
 ```bash
 git clone https://github.com/sandalwoodbox/go-cleancredits.git

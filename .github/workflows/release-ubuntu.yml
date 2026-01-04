@@ -59,11 +59,11 @@ jobs:
 
       - name: Package
         run: |
-          fyne package -os linux -release
+          fyne package -os linux -release -name cleancredits-ubuntu-$(uname -m)
 
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
           fail_on_unmatched_files: true
           files: |
-            cleancredits.tar.xz
+            cleancredits-ubuntu-*.tar.xz
