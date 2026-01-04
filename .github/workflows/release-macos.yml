@@ -59,6 +59,7 @@ jobs:
       - name: Package
         run: |
           fyne package -os darwin -release
+          zip -vr cleancredits.app.zip cleancredits.app/
           ls
 
       - name: Release
@@ -66,4 +67,4 @@ jobs:
         with:
           fail_on_unmatched_files: true
           files: |
-            cleancredits.app
+            cleancredits.app.zip

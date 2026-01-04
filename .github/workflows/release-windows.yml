@@ -39,14 +39,17 @@ jobs:
       - name: Verify OpenCV
         run: |
           chdir "$(go env GOPATH)\pkg\mod\gocv.io\x\gocv@v0.42.0"
+          $env:PATH = 'C:\msys64\mingw64\bin;' + $env:PATH
           go run cmd\version\main.go
 
       - name: Build
         run: |
+          $env:PATH = 'C:\msys64\mingw64\bin;' + $env:PATH
           go build -v ./...
 
       - name: Test
         run: |
+          $env:PATH = 'C:\msys64\mingw64\bin;' + $env:PATH
           go test -v ./...
 
       - uses: actions/upload-artifact@v6
