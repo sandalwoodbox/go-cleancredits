@@ -14,7 +14,10 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15-intel
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-15-intel, macos-15, macos-14]
 
     steps:
       - uses: actions/checkout@v4
@@ -59,7 +62,7 @@ jobs:
       - name: Package
         run: |
           fyne package -os darwin -release
-          zip -vr cleancredits.app.zip cleancredits.app/
+          zip -vr "cleancredits-${{ matrix.os }}-$(uname -m).app.zip" cleancredits.app/
           ls
 
       - name: Release
@@ -67,4 +70,4 @@ jobs:
         with:
           fail_on_unmatched_files: true
           files: |
-            cleancredits.app.zip
+            cleancredits-${{ matrix.os }}-$(uname -m).app.zip
