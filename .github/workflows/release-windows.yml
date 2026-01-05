@@ -64,11 +64,15 @@ jobs:
       - name: Package
         run: |
           fyne package -os windows -release
-          ls
+          mkdir -Force dist\cleancredits
+          mv cleancredits.exe dist\cleancredits\
+          cp -Path C:\opencv\build\install\x64\mingw\bin\* -Destination dist\cleancredits
+          Compress-Archive -Path dist\cleancredits -DestinationPath cleancredits-windows.zip
+          ls dist\cleancredits
 
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
           fail_on_unmatched_files: true
           files: |
-            cleancredits.exe
+            cleancredits-windows.zip
