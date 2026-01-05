@@ -12,9 +12,6 @@ on:
     tags:
       - "v*.*.*"
 
-env:
-  BUILD_LD_FLAGS: "-linkmode external -extldflags '-static' -LC:/opencv/build/install/x64/mingw/staticlib"
-
 jobs:
   build:
     runs-on: windows-latest
@@ -42,16 +39,16 @@ jobs:
         run: |
           chdir "$(go env GOPATH)\pkg\mod\gocv.io\x\gocv@v0.42.0"
           $env:PATH = 'C:\opencv\build\install\x64\mingw\bin;' + $env:PATH
-          go run --ldflags "${BUILD_LD_FLAGS}" cmd\version\main.go
+          go run --ldflags '-linkmode external -extldflags "-static" -LC:/opencv/build/install/x64/mingw/staticlib' cmd\version\main.go
 
       - name: Build
         run: |
-          go build -v --ldflags "${BUILD_LD_FLAGS}" ./...
+          go build -v --ldflags '-linkmode external -extldflags "-static" -LC:/opencv/build/install/x64/mingw/staticlib' ./...
 
       - name: Test
         run: |
           $env:PATH = 'C:\opencv\build\install\x64\mingw\bin;' + $env:PATH
-          go test --ldflags "${BUILD_LD_FLAGS}" -v ./...
+          go test --ldflags '-linkmode external -extldflags "-static" -LC:/opencv/build/install/x64/mingw/staticlib' -v ./...
 
       - uses: actions/upload-artifact@v6
         if: ${{ success() || failure() }}
