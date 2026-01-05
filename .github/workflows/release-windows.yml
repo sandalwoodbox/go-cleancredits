@@ -39,7 +39,7 @@ jobs:
         run: |
           chdir "$(go env GOPATH)\pkg\mod\gocv.io\x\gocv@v0.42.0"
           $env:PATH = 'C:\opencv\build\install\x64\mingw\bin;' + $env:PATH
-          go run cmd\version\main.go
+          go run --ldflags '-linkmode external -extldflags "-static"' cmd\version\main.go
 
       - name: Build
         run: |
@@ -48,7 +48,7 @@ jobs:
       - name: Test
         run: |
           $env:PATH = 'C:\opencv\build\install\x64\mingw\bin;' + $env:PATH
-          go test -v ./...
+          go test --ldflags '-linkmode external -extldflags "-static"' -v ./...
 
       - uses: actions/upload-artifact@v6
         if: ${{ success() || failure() }}
