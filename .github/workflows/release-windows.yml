@@ -43,7 +43,7 @@ jobs:
 
       - name: Build
         run: |
-          go build -v ./...
+          go build -v --ldflags '-linkmode external -extldflags "-static"' ./...
 
       - name: Test
         run: |
@@ -64,11 +64,7 @@ jobs:
       - name: Package
         run: |
           fyne package -os windows -release
-          mkdir -Force dist\cleancredits
-          mv cleancredits.exe dist\cleancredits\
-          cp -Path C:\opencv\build\install\x64\mingw\bin\* -Destination dist\cleancredits
-          Compress-Archive -Path dist\cleancredits -DestinationPath cleancredits-windows.zip
-          ls dist\cleancredits
+          ls
 
       - name: Release
         uses: softprops/action-gh-release@v2
