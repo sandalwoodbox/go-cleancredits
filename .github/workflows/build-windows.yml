@@ -47,6 +47,7 @@ jobs:
 
       - name: Test
         run: |
+          $env:PATH = 'C:\opencv\build\install\x64\mingw\bin;' + $env:PATH
           go test -v ./...
 
       - uses: actions/upload-artifact@v6
