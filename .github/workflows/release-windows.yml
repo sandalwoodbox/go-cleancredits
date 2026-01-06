@@ -31,6 +31,7 @@ jobs:
       - name: Install OpenCV
         run: |
           echo "Downloading & extracting..."
+          mkdir -Force "c:\opencv\build"
           [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri https://github.com/opencv/opencv/archive/4.12.0.zip -OutFile c:\opencv\opencv-4.12.0.zip
           $ProgressPreference = 'SilentlyContinue'; Expand-Archive -Path c:\opencv\opencv-4.12.0.zip -DestinationPath c:\opencv
           [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri https://github.com/opencv/opencv_contrib/archive/4.12.0.zip -OutFile c:\opencv\opencv_contrib-4.12.0.zip
