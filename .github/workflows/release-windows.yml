@@ -39,16 +39,16 @@ jobs:
         run: |
           chdir "$(go env GOPATH)\pkg\mod\gocv.io\x\gocv@v0.42.0"
           $env:PATH = 'C:\opencv\build\install\x64\mingw\bin;' + $env:PATH
-          go run -tags static --ldflags '-extldflags "-static  -LC:\opencv\build\install\x64\mingw\staticlib'" cmd\version\main.go
+          go run -tags static --ldflags '-extldflags "-static -LC:\opencv\build\install\x64\mingw\staticlib"' cmd\version\main.go
 
       - name: Build
         run: |
-          go build -v -tags static --ldflags '-extldflags "-static  -LC:\opencv\build\install\x64\mingw\staticlib'" ./...
+          go build -v -tags static --ldflags '-extldflags "-static -LC:\opencv\build\install\x64\mingw\staticlib"' ./...
 
       - name: Test
         run: |
           $env:PATH = 'C:\opencv\build\install\x64\mingw\bin;' + $env:PATH
-          go test -tags static --ldflags '-extldflags "-static  -LC:\opencv\build\install\x64\mingw\staticlib'" -v ./...
+          go test -tags static --ldflags '-extldflags "-static -LC:\opencv\build\install\x64\mingw\staticlib"' -v ./...
 
       - uses: actions/upload-artifact@v6
         if: ${{ success() || failure() }}
