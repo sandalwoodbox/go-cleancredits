@@ -28,12 +28,15 @@ jobs:
         run: |
           go get .
 
+      - name: Download OpenCV
+        run: |
+          chdir "$(go env GOPATH)\pkg\mod\gocv.io\x\gocv@v0.42.0"
+          .\win_download_opencv.cmd "C:\opencv"
+
       - name: Install OpenCV
         run: |
           chdir "$(go env GOPATH)\pkg\mod\gocv.io\x\gocv@v0.42.0"
-          mkdir -Force "$(go env GOPATH)\src\gocv.io\x\gocv"
-          $env:GOPATH = go env GOPATH
-          .\win_build_opencv.cmd
+          .\win_build_opencv.cmd "C:\opencv" static
 
       - name: Verify OpenCV
         run: |
